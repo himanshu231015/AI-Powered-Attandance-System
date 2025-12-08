@@ -244,3 +244,42 @@ def add_student(request):
         return redirect('home')
         
     return render(request, 'add_student.html')
+
+@user_passes_test(lambda u: u.is_superuser)
+def manage_students(request):
+    students = Student.objects.all().order_by('-created_at')
+    return render(request, 'manage_students.html', {'students': students})
+
+@user_passes_test(lambda u: u.is_superuser)
+def delete_student(request, student_id):
+    if request.method == 'POST':
+        student = get_object_or_404(Student, id=student_id)
+        user = student.user
+        name = student.name
+        
+        # Delete student folder if exists
+        try:
+            folder_name = f"{student.roll_number}_{student.name}"
+            save_dir = os.path.join(settings.DATASET_DIR, folder_name)
+            if os.path.exists(save_dir):
+                import shutil
+                shutil.rmtree(save_dir)
+        except Exception as e:
+            print(f"Error deleting folder: {e}")
+
+        # Delete student (this cascades to attendance records)
+        student.delete()
+        
+        # Delete associated user
+        if user:
+            user.delete()
+            
+        messages.success(request, f"Student {name} has been deleted successfully.")
+        return redirect('manage_students')
+    
+    return redirect('manage_students')
+
+@user_passes_test(lambda u: u.is_superuser)
+def manage_teachers(request):
+    teachers = User.objects.filter(is_staff=True, is_superuser=False).order_by('-date_joined')
+    return render(request, 'manage_teachers.html', {'teachers': teachers})

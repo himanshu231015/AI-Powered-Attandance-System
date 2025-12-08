@@ -58,8 +58,7 @@
                     {% if user.is_staff %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'teacher_dashboard' %}">Dashboard</a></li>
                     {% if user.is_superuser %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'add_student' %}">Add Student</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'add_teacher' %}">Add Teacher</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}">Manage Students</a></li>
                     {% endif %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'upload_attendance' %}">Take Attendance</a>
                     </li>
