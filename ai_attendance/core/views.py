@@ -222,7 +222,7 @@ def add_student(request):
         # Create User for student
         try:
             user = User.objects.create_user(username=roll_number, password=roll_number)
-            student = Student.objects.create(name=name, roll_number=roll_number, user=user)
+            student = Student.objects.create(name=name, roll_number=roll_number, user=user, plain_password=roll_number)
         except Exception as e:
             messages.error(request, f"Error creating user: {e}")
             return redirect('add_student')
@@ -314,6 +314,19 @@ def change_password(request):
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)  # Important!
+            
+            # Update plain password for display in admin dashboard
+            if hasattr(user, 'student'):
+                try:
+                    student = user.student
+                    student.plain_password = form.cleaned_data['new_password1']
+                    student.save()
+                    print(f"DEBUG: Updated plain_password for {student.roll_number} to {student.plain_password}")
+                except Exception as e:
+                    print(f"DEBUG: Error updating plain_password: {e}")
+            else:
+                 print(f"DEBUG: User {user.username} has no student profile.")
+                
             messages.success(request, 'Your password was successfully updated!')
             # Redirect to appropriate dashboard based on role
             if user.is_superuser:
@@ -335,6 +348,24 @@ def student_dashboard(request):
          return render(request, 'student_portal/dashboard.html', {'error': 'No student profile found.'})
     
     student = request.user.student
+    
+    # Handle Profile Update
+    if request.method == 'POST':
+        try:
+            student.email = request.POST.get('email')
+            student.phone_number = request.POST.get('phone_number')
+            student.department = request.POST.get('department')
+            student.address = request.POST.get('address')
+            
+            dob = request.POST.get('date_of_birth')
+            if dob:
+                student.date_of_birth = dob
+            
+            student.save()
+            messages.success(request, "Profile updated successfully!")
+            return redirect('student_dashboard')
+        except Exception as e:
+            messages.error(request, f"Error updating profile: {e}")
     
     today = datetime.date.today()
     start_week = today - datetime.timedelta(days=today.weekday())

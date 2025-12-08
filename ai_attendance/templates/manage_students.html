@@ -14,7 +14,7 @@
                 <thead>
                     <tr>
                         <th>User ID (Roll No)</th>
-                        <th>Default Password</th>
+                        <th>Password</th>
                         <th>Phone Number</th>
                         <th>Name</th>
                         <th>Actions</th>
@@ -24,7 +24,7 @@
                     {% for student in students %}
                     <tr>
                         <td>{{ student.roll_number }}</td>
-                        <td>{{ student.roll_number }}</td>
+                        <td>{{ student.plain_password|default:student.roll_number }}</td>
                         <td>{{ student.phone_number|default:"-" }}</td>
                         <td>{{ student.name }}</td>
                         <td>
