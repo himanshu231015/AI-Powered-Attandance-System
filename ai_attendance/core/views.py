@@ -13,7 +13,9 @@ import os
 import datetime
 import json
 import base64
-import base64
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.decorators import login_required
 
 def index(request):
     if request.user.is_authenticated:
@@ -199,7 +201,7 @@ def add_teacher(request):
             user.is_staff = True
             user.save()
             messages.success(request, f"Teacher {username} added successfully!")
-            return redirect('home')
+            return redirect('admin_dashboard')
         except Exception as e:
             messages.error(request, f"Error adding teacher: {e}")
             return redirect('add_teacher')
@@ -246,7 +248,7 @@ def add_student(request):
             fs.delete(filename)
             
         messages.success(request, f"Student added with {count} face images.")
-        return redirect('home')
+        return redirect('admin_dashboard')
         
     return render(request, 'add_student.html')
 
@@ -304,3 +306,54 @@ def admin_dashboard(request):
         'recent_attendance': recent_attendance,
     }
     return render(request, 'admin_dashboard.html', context)
+
+@login_required
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Important!
+            messages.success(request, 'Your password was successfully updated!')
+            # Redirect to appropriate dashboard based on role
+            if user.is_superuser:
+                return redirect('admin_dashboard')
+            elif user.is_staff:
+                return redirect('teacher_dashboard')
+            else:
+                return redirect('student_dashboard')
+        else:
+            messages.error(request, 'Please correct the error below.')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'change_password.html', {'form': form})
+
+@login_required
+def student_dashboard(request):
+    if not hasattr(request.user, 'student'):
+         # Fallback if user is not linked to a student profile
+         return render(request, 'student_portal/dashboard.html', {'error': 'No student profile found.'})
+    
+    student = request.user.student
+    
+    today = datetime.date.today()
+    start_week = today - datetime.timedelta(days=today.weekday())
+    end_week = start_week + datetime.timedelta(days=6)
+    
+    # Calculate attendance stats
+    current_attendance_count = AttendanceRecord.objects.filter(student=student, status='Present').count()
+    
+    # Simple projection logic (placeholder)
+    weekly_classes_count = TimeTable.objects.count() # This is total slots, maybe filter by student's dept/year if applicable
+    projected_attendance = current_attendance_count # Just a placeholder
+    
+    records = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time')[:10]
+    
+    context = {
+        'student': student,
+        'current_attendance_count': current_attendance_count,
+        'weekly_classes_count': weekly_classes_count,
+        'projected_attendance': projected_attendance,
+        'records': records,
+    }
+    return render(request, 'student_portal/dashboard.html', context)
