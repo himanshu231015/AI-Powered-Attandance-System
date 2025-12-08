@@ -39,6 +39,8 @@ def train(request):
             messages.success(request, msg)
         else:
             messages.error(request, msg)
+    if request.user.is_superuser:
+        return redirect('admin_dashboard')
     return redirect('home')
 
 def upload_attendance(request):
@@ -63,6 +65,7 @@ def upload_attendance(request):
                         AttendanceRecord.objects.create(student=student)
                         marked_count += 1
                 except Student.DoesNotExist:
+                    print(f"DEBUG: Student with roll number {pred['roll_number']} not found in DB.")
                     pass
             else:
                 unknown_count += 1

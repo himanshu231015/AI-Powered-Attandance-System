@@ -4,7 +4,9 @@
 
 {% block content %}
 <div style="margin-bottom: 20px;">
+    {% if user.is_superuser %}
     {% get_dashboard_stats %}
+    {% endif %}
 </div>
 {{ block.super }}
 {% endblock %}

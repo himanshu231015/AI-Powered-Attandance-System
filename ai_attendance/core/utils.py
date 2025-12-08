@@ -108,10 +108,17 @@ def identify_faces(image_path=None, image_content=None):
     
     print("Finding closest neighbors...")
     closest_distances = knn_clf.kneighbors(faces_encodings, n_neighbors=1)
-    are_matches = [closest_distances[0][i][0] <= 0.6 for i in range(len(X_face_locations))]
+    print(f"DEBUG: Closest distances: {closest_distances[0]}")
+    # Relaxing threshold to 0.65 for better recall
+    threshold = 0.65
+    are_matches = [closest_distances[0][i][0] <= threshold for i in range(len(X_face_locations))]
     
     predictions = []
-    for i, (pred, loc, rec) in enumerate(zip(knn_clf.predict(faces_encodings), X_face_locations, are_matches)):
+    # distances are in closest_distances[0]
+    distances = closest_distances[0]
+    
+    for i, (pred, loc, rec, dist) in enumerate(zip(knn_clf.predict(faces_encodings), X_face_locations, are_matches, distances)):
+        distance_val = round(dist[0], 2)
         if rec:
             roll_number = pred
             try:
@@ -121,10 +128,10 @@ def identify_faces(image_path=None, image_content=None):
                 name = "Unknown"
                 roll_number = None
         else:
-            name = "Unknown"
+            name = f"Unknown (Dist: {distance_val})"
             roll_number = None
             
-        predictions.append({'name': name, 'roll_number': roll_number, 'location': loc})
+        predictions.append({'name': name, 'roll_number': roll_number, 'location': loc, 'distance': distance_val})
         
     return predictions
 
