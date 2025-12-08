@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header">Uploaded Image</div>
+            <div class="card-body text-center">
+                <img src="{{ image_url }}" class="img-fluid rounded" alt="Class Photo">
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Recognition Results</h5>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for pred in predictions %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {% if pred.name != "Unknown" %}
+                    <span class="fw-bold"><i class="fas fa-check-circle text-success me-2"></i>{{ pred.name }} <small
+                            class="text-muted">({{ pred.roll_number }})</small></span>
+                    <span class="badge bg-success">Marked Present</span>
+                    {% else %}
+                    <span class="text-muted"><i class="fas fa-question-circle me-2"></i>Unknown Face</span>
+                    <span class="badge bg-secondary">Ignored</span>
+                    {% endif %}
+                </li>
+                {% empty %}
+                <li class="list-group-item">No faces detected.</li>
+                {% endfor %}
+            </ul>
+            <div class="card-footer">
+                <a href="{% url 'home' %}" class="btn btn-primary w-100">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

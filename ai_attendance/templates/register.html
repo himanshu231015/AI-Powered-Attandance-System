@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-lg mt-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-plus me-2"></i>Create an Account</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" id="registerForm">
+                    {% csrf_token %}
+                    
+                    <!-- Role Selection -->
+                    <div class="mb-4 text-center">
+                        <label class="form-label d-block fw-bold">I am a:</label>
+                        <div class="btn-group" role="group" aria-label="Role selection">
+                            <input type="radio" class="btn-check" name="role" id="role_student" value="student" checked onchange="toggleFields()">
+                            <label class="btn btn-outline-primary" for="role_student">Student</label>
+
+                            <input type="radio" class="btn-check" name="role" id="role_teacher" value="teacher" onchange="toggleFields()">
+                            <label class="btn btn-outline-primary" for="role_teacher">Teacher</label>
+                        </div>
+                    </div>
+
+                    <!-- Common Fields -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                            <div class="form-text">This will be your login ID.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                    </div>
+
+                    <!-- Student Specific Fields -->
+                    <div id="studentFields">
+                        <hr class="my-4">
+                        <h5 class="mb-3 text-muted">Student Details</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="name" name="name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="roll_number" class="form-label">Roll Number</label>
+                                <input type="text" class="form-control" id="roll_number" name="roll_number">
+                                <div class="form-text">Must be unique.</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="images" class="form-label">Upload Face Photos (Min 5 recommended)</label>
+                            <input type="file" class="form-control" id="images" name="images" multiple accept="image/*">
+                            <div class="form-text">These photos will be used to train the AI to recognize you.</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Register</button>
+                        <a href="{% url 'login' %}" class="btn btn-link">Already have an account? Login</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleFields() {
+        const isStudent = document.getElementById('role_student').checked;
+        const studentFields = document.getElementById('studentFields');
+        const nameInput = document.getElementById('name');
+        const rollInput = document.getElementById('roll_number');
+        const imagesInput = document.getElementById('images');
+
+        if (isStudent) {
+            studentFields.style.display = 'block';
+            nameInput.required = true;
+            rollInput.required = true;
+            imagesInput.required = true;
+        } else {
+            studentFields.style.display = 'none';
+            nameInput.required = false;
+            rollInput.required = false;
+            imagesInput.required = false;
+        }
+    }
+
+    // Initialize
+    toggleFields();
+</script>
+{% endblock %}

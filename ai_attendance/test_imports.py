@@ -1,0 +1,9 @@
+print("Importing cv2...")
+import cv2
+print("cv2 imported.")
+print("Importing face_recognition...")
+import face_recognition
+print("face_recognition imported.")
+print("Importing django...")
+import django
+print("django imported.")

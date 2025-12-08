@@ -1,0 +1,6 @@
+django
+opencv-python
+face_recognition
+numpy
+scikit-learn
+pillow

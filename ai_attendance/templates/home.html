@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12 text-center">
+        <h1 class="header-title display-4">Welcome to AI Attendance System</h1>
+        <p class="lead text-muted">Smart, Fast, and Contactless Attendance</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card h-100 p-4 text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                <h3 class="card-title">{{ total_students }}</h3>
+                <p class="card-text text-muted">Total Students</p>
+                <a href="{% url 'add_student' %}" class="btn btn-outline-primary w-100">Add New Student</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 p-4 text-center">
+            <div class="card-body">
+                <i class="fas fa-clipboard-check fa-3x text-success mb-3"></i>
+                <h3 class="card-title">{{ total_attendance }}</h3>
+                <p class="card-text text-muted">Total Attendance Records</p>
+                <a href="{% url 'attendance_list' %}" class="btn btn-outline-success w-100">View History</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 p-4 text-center">
+            <div class="card-body">
+                <i class="fas fa-brain fa-3x text-warning mb-3"></i>
+                <h3 class="card-title">AI Model</h3>
+                <p class="card-text text-muted">Train the recognition model</p>
+                <form action="{% url 'train' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning w-100 text-white">Re-Train Model</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-12 text-center">
+        <a href="{% url 'upload_attendance' %}" class="btn btn-primary btn-lg px-5 py-3 rounded-pill shadow me-3">
+            <i class="fas fa-camera me-2"></i> Upload Photo
+        </a>
+        <a href="{% url 'live_attendance' %}" class="btn btn-danger btn-lg px-5 py-3 rounded-pill shadow">
+            <i class="fas fa-video me-2"></i> Live Attendance
+        </a>
+    </div>
+</div>
+{% endblock %}

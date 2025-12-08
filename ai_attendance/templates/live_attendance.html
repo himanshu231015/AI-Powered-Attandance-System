@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-video me-2"></i>Live Attendance</h5>
+                <div>
+                    <select id="cameraSelect" class="form-select form-select-sm" style="width: 200px;">
+                        <option value="">Loading cameras...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body p-0 position-relative bg-black text-center" style="min-height: 480px;">
+                <video id="videoElement" autoplay playsinline
+                    style="width: 100%; height: 100%; object-fit: contain;"></video>
+                <canvas id="overlayCanvas"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                <div id="loadingSpinner" class="position-absolute top-50 start-50 translate-middle text-white"
+                    style="display: none;">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <div>
+                    <button id="startBtn" class="btn btn-success"><i class="fas fa-play me-2"></i>Start</button>
+                    <button id="stopBtn" class="btn btn-danger" disabled><i class="fas fa-stop me-2"></i>Stop</button>
+                </div>
+                <div class="form-check form-switch d-flex align-items-center">
+                    <input class="form-check-input me-2" type="checkbox" id="autoMode">
+                    <label class="form-check-label" for="autoMode">Auto-Scan (Every 3s)</label>
+                </div>
+                <button id="scanBtn" class="btn btn-primary" disabled><i class="fas fa-camera me-2"></i>Scan
+                    Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Live Log</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                <ul id="logList" class="list-group list-group-flush">
+                    <li class="list-group-item text-muted text-center">No detections yet...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden canvas for capturing frames -->
+<canvas id="captureCanvas" style="display: none;"></canvas>
+
+<script>
+    const video = document.getElementById('videoElement');
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    const captureCanvas = document.getElementById('captureCanvas');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const scanBtn = document.getElementById('scanBtn');
+    const autoMode = document.getElementById('autoMode');
+    const logList = document.getElementById('logList');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+
+    let stream = null;
+    let autoInterval = null;
+    let isProcessing = false;
+
+    // Load cameras
+    async function getCameras() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+            cameraSelect.innerHTML = '';
+            videoDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Camera ${cameraSelect.length + 1}`;
+                cameraSelect.appendChild(option);
+            });
+
+            if (videoDevices.length === 0) {
+                const option = document.createElement('option');
+                option.text = "No cameras found";
+                cameraSelect.appendChild(option);
+            }
+        } catch (err) {
+            console.error("Error listing cameras:", err);
+            cameraSelect.innerHTML = '<option>Error listing cameras</option>';
+        }
+    }
+
+    // Start Camera
+    async function startCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+
+        const deviceId = cameraSelect.value;
+        const constraints = {
+            video: {
+                deviceId: deviceId ? { exact: deviceId } : undefined,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = stream;
+
+            video.onloadedmetadata = () => {
+                overlayCanvas.width = video.videoWidth;
+                overlayCanvas.height = video.videoHeight;
+                captureCanvas.width = video.videoWidth;
+                captureCanvas.height = video.videoHeight;
+            };
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            scanBtn.disabled = false;
+
+            if (autoMode.checked) {
+                startAutoScan();
+            }
+        } catch (err) {
+            console.error("Error starting camera:", err);
+            alert("Could not start camera. Please check permissions.");
+        }
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+            stream = null;
+        }
+        stopAutoScan();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        scanBtn.disabled = true;
+
+        // Clear canvas
+        const ctx = overlayCanvas.getContext('2d');
+        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+
+    function startAutoScan() {
+        if (autoInterval) clearInterval(autoInterval);
+        autoInterval = setInterval(() => {
+            if (!isProcessing) captureAndSend();
+        }, 3000); // 3 seconds
+    }
+
+    function stopAutoScan() {
+        if (autoInterval) clearInterval(autoInterval);
+        autoInterval = null;
+    }
+
+    async function captureAndSend() {
+        if (!stream || isProcessing) return;
+
+        isProcessing = true;
+        if (!autoMode.checked) loadingSpinner.style.display = 'block';
+
+        // Draw video frame to hidden canvas
+        const ctx = captureCanvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+
+        // Convert to base64
+        const imageData = captureCanvas.toDataURL('image/jpeg', 0.8);
+
+        try {
+            const response = await fetch('/process_live_frame/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: imageData })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                drawResults(data.results);
+                updateLog(data.results);
+            } else {
+                console.error("Server error:", data.message);
+            }
+        } catch (err) {
+            console.error("Network error:", err);
+        } finally {
+            isProcessing = false;
+            loadingSpinner.style.display = 'none';
+        }
+    }
+
+    function drawResults(results) {
+        const ctx = overlayCanvas.getContext('2d');
+        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+        results.forEach(res => {
+            const [top, right, bottom, left] = res.location;
+
+            // Draw box
+            ctx.strokeStyle = res.name === 'Unknown' ? 'red' : '#0f0';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(left, top, right - left, bottom - top);
+
+            // Draw label background
+            ctx.fillStyle = res.name === 'Unknown' ? 'red' : '#0f0';
+            const text = res.name === 'Unknown' ? 'Unknown' : `${res.name} (${res.status})`;
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillRect(left, top - 25, textWidth + 10, 25);
+
+            // Draw text
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.fillText(text, left + 5, top - 7);
+        });
+    }
+
+    function updateLog(results) {
+        if (results.length === 0) return;
+
+        // Clear "No detections" message if present
+        if (logList.firstElementChild && logList.firstElementChild.classList.contains('text-muted')) {
+            logList.innerHTML = '';
+        }
+
+        results.forEach(res => {
+            if (res.name === 'Unknown') return;
+
+            const time = new Date().toLocaleTimeString();
+            const item = document.createElement('li');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center animate__animated animate__fadeIn';
+
+            let badgeClass = 'bg-secondary';
+            if (res.status.includes('Marked Present')) badgeClass = 'bg-success';
+            else if (res.status.includes('Already')) badgeClass = 'bg-info';
+
+            item.innerHTML = `
+                <div>
+                    <span class="fw-bold">${res.name}</span>
+                    <br>
+                    <small class="text-muted">${time}</small>
+                </div>
+                <span class="badge ${badgeClass}">${res.status}</span>
+            `;
+
+            // Prepend to list
+            logList.insertBefore(item, logList.firstChild);
+
+            // Limit list size
+            if (logList.children.length > 20) {
+                logList.removeChild(logList.lastChild);
+            }
+        });
+    }
+
+    // Event Listeners
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+    scanBtn.addEventListener('click', captureAndSend);
+
+    cameraSelect.addEventListener('change', () => {
+        if (stream) startCamera(); // Restart with new device
+    });
+
+    autoMode.addEventListener('change', () => {
+        if (autoMode.checked) {
+            if (stream) startAutoScan();
+        } else {
+            stopAutoScan();
+        }
+    });
+
+    // Initialize
+    getCameras();
+    // Ask for permission initially to populate labels
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(s => {
+            s.getTracks().forEach(t => t.stop());
+            getCameras();
+        })
+        .catch(e => console.log("Permission denied initially"));
+
+</script>
+{% endblock %}

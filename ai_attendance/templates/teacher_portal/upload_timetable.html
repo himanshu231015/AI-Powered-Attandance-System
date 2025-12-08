@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-file-upload me-2"></i>Upload Timetable</h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info">
+                    <h5><i class="fas fa-info-circle me-2"></i>Instructions</h5>
+                    <p>Please upload a CSV file with the following columns:</p>
+                    <ul>
+                        <li><strong>Day</strong>: e.g., Monday, Tuesday (or 0-6)</li>
+                        <li><strong>Start Time</strong>: HH:MM (24-hour format)</li>
+                        <li><strong>End Time</strong>: HH:MM (24-hour format)</li>
+                        <li><strong>Subject</strong>: Name of the subject</li>
+                    </ul>
+                    <p class="mb-0">Example: <code>Monday, 09:00, 10:00, Mathematics</code></p>
+                </div>
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label for="timetable_file" class="form-label">Select CSV File</label>
+                        <input type="file" class="form-control" id="timetable_file" name="timetable_file" accept=".csv"
+                            required>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-upload me-2"></i>Upload Timetable
+                        </button>
+                        <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
