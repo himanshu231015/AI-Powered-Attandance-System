@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2 class="header-title">Admin Dashboard</h2>
+        <p class="text-muted">Welcome back, {{ user.username }}!</p>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Total Students</h6>
+                        <h2 class="mt-2 mb-0">{{ total_students }}</h2>
+                    </div>
+                    <i class="fas fa-user-graduate fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Total Teachers</h6>
+                        <h2 class="mt-2 mb-0">{{ total_teachers }}</h2>
+                    </div>
+                    <i class="fas fa-chalkboard-teacher fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Attendance Records</h6>
+                        <h2 class="mt-2 mb-0">{{ total_attendance }}</h2>
+                    </div>
+                    <i class="fas fa-clipboard-check fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="{% url 'manage_students' %}" class="btn btn-outline-primary w-100 h-100 py-3">
+                            <i class="fas fa-users mb-2 fa-2x d-block"></i>
+                            Manage Students
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'manage_teachers' %}" class="btn btn-outline-success w-100 h-100 py-3">
+                            <i class="fas fa-user-tie mb-2 fa-2x d-block"></i>
+                            Manage Teachers
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'add_student' %}" class="btn btn-outline-primary w-100 h-100 py-3">
+                            <i class="fas fa-user-plus mb-2 fa-2x d-block"></i>
+                            Add Student
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'add_teacher' %}" class="btn btn-outline-success w-100 h-100 py-3">
+                            <i class="fas fa-user-plus mb-2 fa-2x d-block"></i>
+                            Add Teacher
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'upload_attendance' %}" class="btn btn-outline-warning w-100 h-100 py-3">
+                            <i class="fas fa-camera mb-2 fa-2x d-block"></i>
+                            Take Attendance
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'attendance_list' %}" class="btn btn-outline-info w-100 h-100 py-3">
+                            <i class="fas fa-history mb-2 fa-2x d-block"></i>
+                            View History
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Recent Attendance</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in recent_attendance %}
+                            <tr>
+                                <td>{{ record.student.name }}</td>
+                                <td>{{ record.date }}</td>
+                                <td>{{ record.time }}</td>
+                                <td><span class="badge bg-success">{{ record.status }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No attendance records found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

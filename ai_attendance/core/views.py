@@ -17,7 +17,9 @@ import base64
 
 def index(request):
     if request.user.is_authenticated:
-        if request.user.is_staff:
+        if request.user.is_superuser:
+            return redirect('admin_dashboard')
+        elif request.user.is_staff:
             return redirect('teacher_dashboard')
         else:
             return redirect('student_dashboard')
@@ -283,3 +285,19 @@ def delete_student(request, student_id):
 def manage_teachers(request):
     teachers = User.objects.filter(is_staff=True, is_superuser=False).order_by('-date_joined')
     return render(request, 'manage_teachers.html', {'teachers': teachers})
+@user_passes_test(lambda u: u.is_superuser)
+def admin_dashboard(request):
+    total_students = Student.objects.count()
+    total_teachers = User.objects.filter(is_staff=True, is_superuser=False).count()
+    total_attendance = AttendanceRecord.objects.count()
+    
+    # Get recent attendance
+    recent_attendance = AttendanceRecord.objects.all().order_by('-date', '-time')[:5]
+    
+    context = {
+        'total_students': total_students,
+        'total_teachers': total_teachers,
+        'total_attendance': total_attendance,
+        'recent_attendance': recent_attendance,
+    }
+    return render(request, 'admin_dashboard.html', context)

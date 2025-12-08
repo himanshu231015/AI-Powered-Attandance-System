@@ -52,3 +52,9 @@ class Teacher(User):
         proxy = True
         verbose_name = 'Teacher'
         verbose_name_plural = 'Teachers'
+
+class Admin(User):
+    class Meta:
+        proxy = True
+        verbose_name = 'Admin'
+        verbose_name_plural = 'Admins'

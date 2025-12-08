@@ -1,0 +1,10 @@
+{% extends "admin/index.html" %}
+
+{% load dashboard_tags %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    {% get_dashboard_stats %}
+</div>
+{{ block.super }}
+{% endblock %}
