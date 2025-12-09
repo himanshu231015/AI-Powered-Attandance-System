@@ -57,23 +57,62 @@ def upload_attendance(request):
         marked_count = 0
         unknown_count = 0
         
+        checked_rolls = set()
+        final_predictions = []
+        
         for pred in predictions:
-            if pred['roll_number']:
+            roll_number = pred['roll_number']
+            if roll_number:
+                # Deduplication: Check if we already processed this student in this frame
+                if roll_number in checked_rolls:
+                    # Skip duplicate entirely
+                    continue
+                
+                checked_rolls.add(roll_number)
+                
                 try:
-                    student = Student.objects.get(roll_number=pred['roll_number'])
-                    # Mark attendance
-                    today = datetime.date.today()
-                    if not AttendanceRecord.objects.filter(student=student, date=today).exists():
-                        AttendanceRecord.objects.create(student=student)
-                        marked_count += 1
+                    student = Student.objects.get(roll_number=roll_number)
+                    # Mark attendance with 1-hour Cooldown Logic
+                    
+                    # Check last attendance
+                    last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
+                    can_mark = True
+                    status_text = "Marked Present"
+                    
+                    if last_attendance:
+                        # Combine date and time to get full datetime (Assuming stored in UTC if USE_TZ=True)
+                        # We need to make it aware. Since DB stores in UTC with USE_TZ=True, we interpret as UTC.
+                        from django.utils import timezone
+                        import datetime
+                        
+                        last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
+                        # Make it aware (UTC)
+                        last_datetime = timezone.make_aware(last_datetime_naive, datetime.timezone.utc)
+                        
+                        time_diff = timezone.now() - last_datetime
+                        if time_diff.total_seconds() < 3600:
+                            can_mark = False
+                            status_text = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
+                    
+                    if can_mark:
+                         AttendanceRecord.objects.create(student=student)
+                         marked_count += 1
+                         
+                    # Inject status into prediction object for template display
+                    pred['status'] = status_text
+                    
                 except Student.DoesNotExist:
-                    print(f"DEBUG: Student with roll number {pred['roll_number']} not found in DB.")
+                    print(f"DEBUG: Student with roll number {roll_number} not found in DB.")
+                    pred['status'] = 'Student Not Found'
                     pass
             else:
                 unknown_count += 1
+                pred['status'] = 'Unknown'
+            
+            final_predictions.append(pred)
                 
         messages.success(request, f"Attendance marked for {marked_count} students. {unknown_count} unknown faces.")
-        return render(request, 'attendance_result.html', {'predictions': predictions, 'image_url': fs.url(filename)})
+        return render(request, 'attendance_result.html', {'predictions': final_predictions, 'image_url': fs.url(filename)})
         
     return render(request, 'upload_attendance.html')
 
@@ -149,30 +188,56 @@ def process_live_frame(request):
             # Mark attendance
             results = []
             
+            # Deduplication for this frame
+            processed_rolls_in_frame = set()
+            
             for pred in predictions:
                 status_msg = ""
-                if pred['roll_number']:
-                    try:
-                        student = Student.objects.get(roll_number=pred['roll_number'])
-                        today = datetime.date.today()
-                        
-                        # Check if already marked for this subject today
-                        # If subject is None/Extra Class, we might want to allow multiple? 
-                        # For now, let's enforce unique per subject per day
-                        
-                        if not AttendanceRecord.objects.filter(student=student, date=today, subject=current_subject).exists():
-                            AttendanceRecord.objects.create(student=student, subject=current_subject)
-                            status_msg = f"Marked Present ({current_subject})"
-                        else:
-                            status_msg = f"Already Marked ({current_subject})"
-                    except Student.DoesNotExist:
-                        status_msg = "Student Not Found"
+                roll_number = pred['roll_number']
+                
+                if roll_number:
+                     # Check if we already processed this student in this frame
+                    if roll_number in processed_rolls_in_frame:
+                        continue # Skip duplicate
+                    else:
+                        processed_rolls_in_frame.add(roll_number)
+                        try:
+                            student = Student.objects.get(roll_number=roll_number)
+                            # Cooldown Logic: Check last attendance for this student
+                            last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
+                            
+                            can_mark = True
+                            if last_attendance:
+                                from django.utils import timezone
+                                import datetime
+                                # Combine date and time to get full datetime
+                                last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
+                                # Make it aware (UTC)
+                                last_datetime = timezone.make_aware(last_datetime_naive, datetime.timezone.utc)
+                                
+                                time_diff = timezone.now() - last_datetime
+                                
+                                # Check if less than 1 hour (3600 seconds)
+                                if time_diff.total_seconds() < 3600:
+                                    can_mark = False
+                                    status_msg = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
+                            
+                            if can_mark:
+                                try:
+                                    AttendanceRecord.objects.create(student=student, subject=current_subject)
+                                    status_msg = f"Marked Present ({current_subject})"
+                                except Exception as e:
+                                     # Likely IntegrityError
+                                     status_msg = f"Already Marked Today ({current_subject})"
+                                    
+                        except Student.DoesNotExist:
+                            status_msg = "Student Not Found"
                 else:
                     status_msg = "Unknown"
                 
                 results.append({
                     'name': pred['name'],
-                    'roll_number': pred['roll_number'],
+                    'roll_number': roll_number,
                     'location': pred['location'],
                     'status': status_msg
                 })

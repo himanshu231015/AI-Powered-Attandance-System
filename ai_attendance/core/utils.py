@@ -64,6 +64,8 @@ def train_model():
 
 def identify_faces(image_path=None, image_content=None):
     import face_recognition
+    import cv2
+    
     model_path = settings.MODEL_PATH
     if not os.path.exists(model_path):
         return []
@@ -77,47 +79,101 @@ def identify_faces(image_path=None, image_content=None):
     else:
         image = face_recognition.load_image_file(image_path)
     
-    print("Detecting face locations...")
-    X_face_locations = face_recognition.face_locations(image)
-    
-    if len(X_face_locations) == 0:
-        print("face_recognition found no faces, trying OpenCV Haarcascade...")
-        import cv2
-        # Load Haarcascade
+    print("Detecting face locations with HOG...")
+    # 1. HOG Detection (face_recognition defaults)
+    hog_face_locations = face_recognition.face_locations(image)
+    print(f"HOG found {len(hog_face_locations)} faces")
+
+    # 2. Haar Cascade Detection
+    print("Detecting face locations with Haar Cascade...")
+    try:
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        
-        # Convert to grayscale for Haarcascade
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         else:
             gray = image
-            
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
         
-        # Convert (x, y, w, h) to (top, right, bottom, left)
-        X_face_locations = []
-        for (x, y, w, h) in faces:
-            X_face_locations.append((y, x + w, y + h, x))
+        # Lower scaleFactor for more detail, lowered minNeighbors for more sensitivity
+        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30))
+        
+        haar_face_locations = []
+        for (x, y, w, h) in haar_faces_rects:
+            # Convert (x, y, w, h) to (top, right, bottom, left)
+            # top = y, right = x+w, bottom = y+h, left = x
+            haar_face_locations.append((y, x + w, y + h, x))
             
-    print(f"Found {len(X_face_locations)} faces")
+        print(f"Haar found {len(haar_face_locations)} faces")
+    except Exception as e:
+        print(f"Haar Cascade error: {e}")
+        haar_face_locations = []
+
+    # 3. Merge Detections (Avoid duplicates)
+    final_face_locations = list(hog_face_locations)
     
-    if len(X_face_locations) == 0:
+    def calculate_iou(boxA, boxB):
+        # determine the (x, y)-coordinates of the intersection rectangle
+        # box: (top, right, bottom, left)
+        # Convert to (x1, y1, x2, y2) where x1=left, y1=top, x2=right, y2=bottom
+        
+        # boxA
+        tA, rA, bA, lA = boxA
+        # boxB
+        tB, rB, bB, lB = boxB
+        
+        xA = max(lA, lB)
+        yA = max(tA, tB)
+        xB = min(rA, rB)
+        yB = min(bA, bB)
+        
+        # compute the area of intersection rectangle
+        interArea = max(0, xB - xA) * max(0, yB - yA)
+        
+        # compute the area of both the prediction and ground-truth rectangles
+        boxAArea = (rA - lA) * (bA - tA)
+        boxBArea = (rB - lB) * (bB - tB)
+        
+        # compute the intersection over union
+        iou = interArea / float(boxAArea + boxBArea - interArea)
+        return iou
+
+    for h_loc in haar_face_locations:
+        is_duplicate = False
+        for existing_loc in final_face_locations:
+            iou = calculate_iou(h_loc, existing_loc)
+            if iou > 0.3: # Threshold for overlap
+                is_duplicate = True
+                break
+        
+        if not is_duplicate:
+            final_face_locations.append(h_loc)
+            
+    print(f"Total unique faces found: {len(final_face_locations)}")
+    
+    if len(final_face_locations) == 0:
         return []
         
-    faces_encodings = face_recognition.face_encodings(image, known_face_locations=X_face_locations)
+    faces_encodings = face_recognition.face_encodings(image, known_face_locations=final_face_locations)
+    
+    # If using Haar, sometimes faces are not clear enough for encodings to return valid data corresponding to locs?
+    # face_encodings returns a list of len(known_face_locations). If it can't encode, does it skip?
+    # Documentation says: "If known_face_locations is None, ... If known_face_locations is not None, returns a list of encodings for each face location."
+    # So lists should match length.
     
     print("Finding closest neighbors...")
+    # Handle case where we have locations but maybe encoding failed for some reason (rare but possible if image is tiny)
+    if len(faces_encodings) == 0:
+         return []
+
     closest_distances = knn_clf.kneighbors(faces_encodings, n_neighbors=1)
-    print(f"DEBUG: Closest distances: {closest_distances[0]}")
+    
     # Relaxing threshold to 0.65 for better recall
     threshold = 0.65
-    are_matches = [closest_distances[0][i][0] <= threshold for i in range(len(X_face_locations))]
+    are_matches = [closest_distances[0][i][0] <= threshold for i in range(len(faces_encodings))]
     
     predictions = []
-    # distances are in closest_distances[0]
     distances = closest_distances[0]
     
-    for i, (pred, loc, rec, dist) in enumerate(zip(knn_clf.predict(faces_encodings), X_face_locations, are_matches, distances)):
+    for i, (pred, loc, rec, dist) in enumerate(zip(knn_clf.predict(faces_encodings), final_face_locations, are_matches, distances)):
         distance_val = round(dist[0], 2)
         if rec:
             roll_number = pred
