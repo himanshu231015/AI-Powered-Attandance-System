@@ -74,9 +74,15 @@
                                 <td class="align-middle">{{ slot.start_time }} - {{ slot.end_time }}</td>
                                 <td class="align-middle fw-bold">{{ slot.subject }}</td>
                                 <td>
-                                    <a href="{% url 'live_attendance' %}" class="btn btn-sm btn-danger">
-                                        <i class="fas fa-video me-1"></i> Start Class
-                                    </a>
+                                    <div class="d-flex gap-2">
+                                        <a href="{% url 'live_attendance' %}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-video me-1"></i> Start Class
+                                        </a>
+                                        <a href="{% url 'upload_attendance' %}?subject={{ slot.subject }}"
+                                            class="btn btn-sm btn-primary">
+                                            <i class="fas fa-camera me-1"></i> Upload Photo
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                             {% empty %}

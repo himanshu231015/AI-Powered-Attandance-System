@@ -9,20 +9,35 @@ def train_model():
     from sklearn import neighbors
     dataset_dir = settings.DATASET_DIR
     model_path = settings.MODEL_PATH
+    cache_path = os.path.join(settings.BASE_DIR, 'encodings_cache.pkl')
     
     X = []
     y = []
     
+    # Load cache
+    # Format: {'relative_path': encoding}
+    encodings_cache = {}
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'rb') as f:
+                encodings_cache = pickle.load(f)
+            print(f"Loaded {len(encodings_cache)} cached encodings.")
+        except Exception as e:
+            print(f"Error loading cache: {e}")
+            encodings_cache = {}
+
     if not os.path.exists(dataset_dir):
         os.makedirs(dataset_dir)
+        
+    active_files = set()
+    new_encodings_count = 0
         
     for person_name in os.listdir(dataset_dir):
         person_dir = os.path.join(dataset_dir, person_name)
         if not os.path.isdir(person_dir):
             continue
             
-        # Extract roll number from folder name "Roll_Name"
-        # Example: "1_Vivek" -> roll="1"
+        # Extract roll number
         try:
             roll_number = person_name.split('_')[0]
         except IndexError:
@@ -30,25 +45,53 @@ def train_model():
             
         for image_name in os.listdir(person_dir):
             image_path = os.path.join(person_dir, image_name)
+            # Use relative path as key to be safe against directory moves if root changes, 
+            # though absolute is easier. Let's use relative to dataset_dir.
+            rel_path = os.path.join(person_name, image_name)
+            
             # Skip non-image files
             if not image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 continue
+            
+            active_files.add(rel_path)
                 
-            try:
-                image = face_recognition.load_image_file(image_path)
-                face_encodings = face_recognition.face_encodings(image)
-                
-                if len(face_encodings) > 0:
-                    X.append(face_encodings[0])
-                    y.append(roll_number)
-            except Exception as e:
-                print(f"Error processing {image_path}: {e}")
-                
+            if rel_path in encodings_cache:
+                X.append(encodings_cache[rel_path])
+                y.append(roll_number)
+            else:
+                try:
+                    image = face_recognition.load_image_file(image_path)
+                    face_encodings = face_recognition.face_encodings(image)
+                    
+                    if len(face_encodings) > 0:
+                        encoding = face_encodings[0]
+                        X.append(encoding)
+                        y.append(roll_number)
+                        encodings_cache[rel_path] = encoding
+                        new_encodings_count += 1
+                except Exception as e:
+                    print(f"Error processing {image_path}: {e}")
+    
+    # Check if we have data
     if not X:
         return False, "No face data found in dataset."
+
+    # Cache Cleanup: Remove files that no longer exist
+    # We create a new dict to avoid modifying while iterating or just use dict comprehension
+    # But we want to keep the valid ones we just used. A simple way is to trust 'active_files'.
+    # Note: If a file existed but failed processing, it won't be in X/y but also not in cache, so safe.
+    # If a file was in cache but now deleted from disk, it won't be in 'active_files'.
+    clean_cache = {k: v for k, v in encodings_cache.items() if k in active_files}
+    
+    # Save cache
+    try:
+        with open(cache_path, 'wb') as f:
+            pickle.dump(clean_cache, f)
+        print(f"Cache updated. New: {new_encodings_count}, Total Cached: {len(clean_cache)}")
+    except Exception as e:
+        print(f"Error saving cache: {e}")
         
     # Train KNN
-    # n_neighbors depends on dataset size. 
     n_neighbors = int(round(np.sqrt(len(X))))
     if n_neighbors < 1:
         n_neighbors = 1
@@ -60,7 +103,7 @@ def train_model():
     with open(model_path, 'wb') as f:
         pickle.dump(knn_clf, f)
         
-    return True, f"Model trained successfully with {len(X)} faces."
+    return True, f"Model updated! Processed {new_encodings_count} new images. Total faces: {len(X)}."
 
 def identify_faces(image_path=None, image_content=None):
     import face_recognition
@@ -94,7 +137,8 @@ def identify_faces(image_path=None, image_content=None):
             gray = image
         
         # Lower scaleFactor for more detail, lowered minNeighbors for more sensitivity
-        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30))
+        # INCREASED minNeighbors to 12 to reduce ghost faces (false positives - very strict)
+        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=12, minSize=(60, 60))
         
         haar_face_locations = []
         for (x, y, w, h) in haar_faces_rects:
@@ -166,8 +210,8 @@ def identify_faces(image_path=None, image_content=None):
 
     closest_distances = knn_clf.kneighbors(faces_encodings, n_neighbors=1)
     
-    # Relaxing threshold to 0.65 for better recall
-    threshold = 0.65
+    # Stricter threshold to 0.50 to reduce false positives
+    threshold = 0.50
     are_matches = [closest_distances[0][i][0] <= threshold for i in range(len(faces_encodings))]
     
     predictions = []

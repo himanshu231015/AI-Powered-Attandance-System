@@ -16,6 +16,7 @@ import base64
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 
 def index(request):
     if request.user.is_authenticated:
@@ -46,6 +47,9 @@ def train(request):
     return redirect('home')
 
 def upload_attendance(request):
+    # Get subject from GET (initial load) or POST (submission)
+    subject = request.GET.get('subject') or request.POST.get('subject')
+    
     if request.method == 'POST' and request.FILES.get('class_image'):
         image = request.FILES['class_image']
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'uploads'), base_url='/media/uploads/')
@@ -56,49 +60,73 @@ def upload_attendance(request):
         
         marked_count = 0
         unknown_count = 0
+        absent_count = 0
         
         checked_rolls = set()
+        present_roll_numbers = set()
         final_predictions = []
         
+        today = datetime.date.today()
+        
+        # 1. Process Detected Faces (Mark Present)
         for pred in predictions:
             roll_number = pred['roll_number']
             if roll_number:
+                present_roll_numbers.add(roll_number)
+                
                 # Deduplication: Check if we already processed this student in this frame
                 if roll_number in checked_rolls:
-                    # Skip duplicate entirely
                     continue
                 
                 checked_rolls.add(roll_number)
                 
                 try:
                     student = Student.objects.get(roll_number=roll_number)
-                    # Mark attendance with 1-hour Cooldown Logic
-                    
-                    # Check last attendance
-                    last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
-                    can_mark = True
                     status_text = "Marked Present"
+                    if subject:
+                         status_text += f" ({subject})"
                     
-                    if last_attendance:
-                        # Combine date and time to get full datetime (Assuming stored in UTC if USE_TZ=True)
-                        # We need to make it aware. Since DB stores in UTC with USE_TZ=True, we interpret as UTC.
-                        from django.utils import timezone
-                        import datetime
-                        
-                        last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
-                        # Make it aware (UTC)
-                        last_datetime = timezone.make_aware(last_datetime_naive, datetime.timezone.utc)
-                        
-                        time_diff = timezone.now() - last_datetime
-                        if time_diff.total_seconds() < 3600:
-                            can_mark = False
-                            status_text = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
+                    # Logic: 
+                    # If Subject provided: Check Today+Subject. 
+                    # If exists: 
+                    #    If 'Absent' -> Update to 'Present'.
+                    #    If 'Present' -> Already Marked.
+                    # If not exists -> Create Present.
                     
+                    can_mark = True
+                    
+                    if subject:
+                         existing_record = AttendanceRecord.objects.filter(student=student, date=today, subject=subject).first()
+                         if existing_record:
+                             if existing_record.status == 'Absent':
+                                 existing_record.status = 'Present'
+                                 existing_record.time = timezone.now().time()
+                                 existing_record.save()
+                                 status_text = f"Marked Present (Was Absent) - ({subject})"
+                                 marked_count += 1
+                                 can_mark = False # Handled update
+                             else:
+                                 can_mark = False
+                                 status_text = f"Already Marked Present ({subject})"
+                    else:
+                        # Fallback Global Cooldown
+                        last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
+                        if last_attendance:
+                            last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
+                            if timezone.is_naive(last_datetime_naive):
+                                last_datetime = timezone.make_aware(last_datetime_naive, timezone.get_current_timezone())
+                            else:
+                                last_datetime = last_datetime_naive
+                                
+                            time_diff = timezone.now() - last_datetime
+                            if time_diff.total_seconds() < 3600 and last_attendance.status == 'Present':
+                                can_mark = False
+                                status_text = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
+
                     if can_mark:
-                         AttendanceRecord.objects.create(student=student)
+                         AttendanceRecord.objects.create(student=student, subject=subject, status='Present')
                          marked_count += 1
                          
-                    # Inject status into prediction object for template display
                     pred['status'] = status_text
                     
                 except Student.DoesNotExist:
@@ -110,11 +138,21 @@ def upload_attendance(request):
                 pred['status'] = 'Unknown'
             
             final_predictions.append(pred)
+
+        # 2. Process Missing Students (Auto-Absent) - ONLY if Subject is defined (Class Mode)
+        if subject:
+            all_students = Student.objects.all()
+            for student in all_students:
+                if student.roll_number not in present_roll_numbers:
+                    # Check if record exists
+                    if not AttendanceRecord.objects.filter(student=student, date=today, subject=subject).exists():
+                         AttendanceRecord.objects.create(student=student, subject=subject, status='Absent')
+                         absent_count += 1
                 
-        messages.success(request, f"Attendance marked for {marked_count} students. {unknown_count} unknown faces.")
+        messages.success(request, f"Present: {marked_count}, Absent: {absent_count}, Unknown: {unknown_count}")
         return render(request, 'attendance_result.html', {'predictions': final_predictions, 'image_url': fs.url(filename)})
         
-    return render(request, 'upload_attendance.html')
+    return render(request, 'upload_attendance.html', {'subject': subject})
 
 def attendance_list(request):
     records = AttendanceRecord.objects.all().order_by('-date', '-time')

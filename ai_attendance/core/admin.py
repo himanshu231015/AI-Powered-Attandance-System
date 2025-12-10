@@ -121,15 +121,14 @@ class TeacherAdmin(BaseUserAdmin):
     
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        # We can filter if we strongly enforce teachers are staff/superusers or 
-        # just rely on the proxy model usage. The proxy model itself doesn't automatically filter 
-        # unless we override the manager, but for admin registration purposes 
-        # it creates a separate section.
-        # Ideally, we might want to filter only users that are teachers, but for now
-        # since we don't have a specific "is_teacher" flag other than maybe is_superuser/is_staff
-        # or group membership, we will display all users but under the label "Teachers"
-        # to allow creating new ones easily.
-        return qs
+        # Filter for Teachers (Staff but not Superuser)
+        return qs.filter(is_staff=True, is_superuser=False)
+
+# Unregister default User to avoid confusion
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
 
 admin.site.register(Student, StudentAdmin)
 admin.site.register(TimeTable, TimeTableAdmin)

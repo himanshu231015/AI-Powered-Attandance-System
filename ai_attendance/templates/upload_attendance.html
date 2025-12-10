@@ -10,6 +10,12 @@
             <div class="card-body p-4 text-center">
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
+                    {% if subject %}
+                    <input type="hidden" name="subject" value="{{ subject }}">
+                    <div class="alert alert-info mb-3">
+                        Marking attendance for: <strong>{{ subject }}</strong>
+                    </div>
+                    {% endif %}
                     <div class="mb-4">
                         <i class="fas fa-cloud-upload-alt fa-5x text-muted mb-3"></i>
                         <label for="class_image" class="form-label d-block h5">Upload Class Photo</label>

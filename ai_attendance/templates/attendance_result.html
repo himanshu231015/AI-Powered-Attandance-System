@@ -18,12 +18,12 @@
             <ul class="list-group list-group-flush">
                 {% for pred in predictions %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                    {% if pred.name != "Unknown" %}
+                    {% if pred.roll_number %}
                     <span class="fw-bold"><i class="fas fa-check-circle text-success me-2"></i>{{ pred.name }} <small
                             class="text-muted">({{ pred.roll_number }})</small></span>
-                    <span class="badge bg-success">Marked Present</span>
+                    <span class="badge bg-success">{{ pred.status }}</span>
                     {% else %}
-                    <span class="text-muted"><i class="fas fa-question-circle me-2"></i>Unknown Face</span>
+                    <span class="text-muted"><i class="fas fa-question-circle me-2"></i>{{ pred.name }}</span>
                     <span class="badge bg-secondary">Ignored</span>
                     {% endif %}
                 </li>
