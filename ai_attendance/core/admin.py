@@ -32,13 +32,9 @@ class StudentAdminForm(forms.ModelForm):
 
 class StudentAdmin(admin.ModelAdmin):
     form = StudentAdminForm
-    list_display = ('roll_number', 'name', 'phone_number', 'default_password', 'department')
-    search_fields = ('name', 'roll_number', 'email')
-    list_filter = ('department',)
-
-    def default_password(self, obj):
-        return obj.roll_number
-    default_password.short_description = "Default Password"
+    list_display = ('roll_number', 'name', 'email', 'department', 'year', 'section', 'phone_number', 'plain_password')
+    search_fields = ('name', 'roll_number', 'email', 'department')
+    list_filter = ('department', 'year', 'section')
 
     def save_model(self, request, obj, form, change):
         # Create User if not exists (only for new students)

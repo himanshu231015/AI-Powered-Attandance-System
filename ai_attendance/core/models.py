@@ -10,6 +10,8 @@ class Student(models.Model):
     address = models.TextField(null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     department = models.CharField(max_length=100, null=True, blank=True)
+    year = models.CharField(max_length=10, null=True, blank=True)
+    section = models.CharField(max_length=10, null=True, blank=True)
     plain_password = models.CharField(max_length=128, null=True, blank=True)  # For display purposes only
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -12,6 +12,7 @@ urlpatterns = [
     path('live_attendance/', views.live_attendance, name='live_attendance'),
     path('process_live_frame/', views.process_live_frame, name='process_live_frame'),
     path('manage_students/', views.manage_students, name='manage_students'),
+    path('edit_student/<int:student_id>/', views.edit_student, name='edit_student'),
     path('delete_student/<int:student_id>/', views.delete_student, name='delete_student'),
     path('manage_teachers/', views.manage_teachers, name='manage_teachers'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),

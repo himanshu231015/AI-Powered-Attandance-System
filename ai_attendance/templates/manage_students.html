@@ -3,11 +3,36 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-12">
-        <h2 class="header-title">{% if request.user.is_superuser %}Manage Students{% else %}Student Attendance{% endif
-            %}</h2>
+        <h2 class="header-title">{% if request.user.is_superuser %}Manage Students{% else %}Student Attendance{% endif %}</h2>
+        
+        <!-- Search Form (Unified for Admin & Teacher) -->
+        <div class="card mt-3 shadow-sm border-0 bg-light">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="branch" class="form-label fw-bold">Branch</label>
+                        <input type="text" class="form-control" id="branch" name="branch" placeholder="e.g. CSE" required value="{{ request.GET.branch|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="year" class="form-label fw-bold">Year</label>
+                        <input type="number" class="form-control" id="year" name="year" placeholder="e.g. 1" required value="{{ request.GET.year|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="section" class="form-label fw-bold">Section</label>
+                        <input type="text" class="form-control" id="section" name="section" placeholder="e.g. A" required value="{{ request.GET.section|default:'' }}">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>Show Attendance
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
+{% if students or request.user.is_superuser %}
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
@@ -17,14 +42,16 @@
                         <th>User ID (Roll No)</th>
                         <th>Name</th>
                         {% if request.user.is_superuser %}
+                        <th>Email</th>
+                        <th>Branch</th>
+                        <th>Year</th>
+                        <th>Section</th>
                         <th>Password</th>
                         <th>Phone Number</th>
                         <th>Actions</th>
                         {% else %}
                         <th>Branch</th>
-                        <th>Total Classes</th>
-                        <th>Total Present</th>
-                        <th>Percentage</th>
+                        <th>Attendance</th>
                         {% endif %}
                     </tr>
                 </thead>
@@ -35,9 +62,16 @@
                         <td>{{ student.name }}</td>
 
                         {% if request.user.is_superuser %}
+                        <td>{{ student.email|default:"-" }}</td>
+                        <td>{{ student.department|default:"-" }}</td>
+                        <td>{{ student.year|default:"-" }}</td>
+                        <td>{{ student.section|default:"-" }}</td>
                         <td>{{ student.plain_password|default:student.roll_number }}</td>
                         <td>{{ student.phone_number|default:"-" }}</td>
                         <td>
+                            <a href="{% url 'edit_student' student.id %}" class="btn btn-warning btn-sm me-1">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
                             <form action="{% url 'delete_student' student.id %}" method="post" class="d-inline"
                                 onsubmit="return confirm('Are you sure you want to delete this student? This action cannot be undone.');">
                                 {% csrf_token %}
@@ -48,8 +82,6 @@
                         </td>
                         {% else %}
                         <td>{{ student.department|default:"-" }}</td>
-                        <td>{{ student.total_classes }}</td>
-                        <td>{{ student.present_count }}</td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <span class="fw-bold me-2">{{ student.attendance_percentage }}%</span>
@@ -64,8 +96,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="{% if request.user.is_superuser %}5{% else %}6{% endif %}"
-                            class="text-center text-muted">No students found.</td>
+                        <td colspan="{% if request.user.is_superuser %}9{% else %}4{% endif %}" class="text-center text-muted">No students found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -73,4 +104,10 @@
         </div>
     </div>
 </div>
+{% elif not request.user.is_superuser %}
+<div class="alert alert-info text-center mt-4">
+    <i class="fas fa-info-circle me-2"></i> Please enter Branch, Year, and Section to view student attendance.
+</div>
+{% endif %}
+
 {% endblock %}

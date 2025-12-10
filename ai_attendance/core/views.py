@@ -357,9 +357,26 @@ def add_student(request):
 
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def manage_students(request):
-    students = Student.objects.all().order_by('-created_at')
+    # Get filter parameters
+    branch = request.GET.get('branch')
+    year = request.GET.get('year')
+    section = request.GET.get('section')
     
-    # Calculate attendance for each student
+    # Base QuerySet
+    if branch and year and section:
+         students = Student.objects.filter(
+            department__icontains=branch,
+            year__icontains=year,
+            section__icontains=section
+        ).order_by('roll_number')
+    else:
+        # Default behavior if no filter found
+        if request.user.is_superuser:
+            students = Student.objects.all().order_by('-created_at') # Admin sees all
+        else:
+            students = Student.objects.none() # Teacher sees none
+            
+    # Calculate attendance for each student (common logic)
     for student in students:
         total_classes = AttendanceRecord.objects.filter(student=student).count()
         present_count = AttendanceRecord.objects.filter(student=student, status='Present').count()
@@ -403,6 +420,49 @@ def delete_student(request, student_id):
         return redirect('manage_students')
     
     return redirect('manage_students')
+
+@user_passes_test(lambda u: u.is_superuser)
+def edit_student(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        roll_number = request.POST.get('roll_number')
+        email = request.POST.get('email')
+        phone_number = request.POST.get('phone_number')
+        department = request.POST.get('department')
+        year = request.POST.get('year')
+        section = request.POST.get('section')
+        password = request.POST.get('password')
+        
+        # Update fields
+        student.name = name
+        student.roll_number = roll_number
+        student.email = email
+        student.phone_number = phone_number
+        student.department = department
+        student.year = year
+        student.section = section
+        
+        # Update password if provided
+        if password:
+            student.plain_password = password
+            # Also update the User object if it exists
+            if student.user:
+                student.user.set_password(password)
+                student.user.save()
+        
+        # Sync other details to User object if it exists
+        if student.user:
+            student.user.email = email
+            student.user.first_name = name
+            student.user.save()
+        
+        student.save()
+        messages.success(request, f"Student {student.name} updated successfully.")
+        return redirect('manage_students')
+        
+    return render(request, 'edit_student.html', {'student': student})
 
 @user_passes_test(lambda u: u.is_superuser)
 def manage_teachers(request):
