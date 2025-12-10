@@ -3,7 +3,8 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-12">
-        <h2 class="header-title">Manage Students</h2>
+        <h2 class="header-title">{% if request.user.is_superuser %}Manage Students{% else %}Student Attendance{% endif
+            %}</h2>
     </div>
 </div>
 
@@ -14,19 +15,28 @@
                 <thead>
                     <tr>
                         <th>User ID (Roll No)</th>
+                        <th>Name</th>
+                        {% if request.user.is_superuser %}
                         <th>Password</th>
                         <th>Phone Number</th>
-                        <th>Name</th>
                         <th>Actions</th>
+                        {% else %}
+                        <th>Branch</th>
+                        <th>Total Classes</th>
+                        <th>Total Present</th>
+                        <th>Percentage</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for student in students %}
                     <tr>
                         <td>{{ student.roll_number }}</td>
+                        <td>{{ student.name }}</td>
+
+                        {% if request.user.is_superuser %}
                         <td>{{ student.plain_password|default:student.roll_number }}</td>
                         <td>{{ student.phone_number|default:"-" }}</td>
-                        <td>{{ student.name }}</td>
                         <td>
                             <form action="{% url 'delete_student' student.id %}" method="post" class="d-inline"
                                 onsubmit="return confirm('Are you sure you want to delete this student? This action cannot be undone.');">
@@ -36,10 +46,26 @@
                                 </button>
                             </form>
                         </td>
+                        {% else %}
+                        <td>{{ student.department|default:"-" }}</td>
+                        <td>{{ student.total_classes }}</td>
+                        <td>{{ student.present_count }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="fw-bold me-2">{{ student.attendance_percentage }}%</span>
+                                <div class="progress flex-grow-1" style="height: 5px; width: 50px;">
+                                    <div class="progress-bar {% if student.attendance_percentage >= 75 %}bg-success{% elif student.attendance_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                        role="progressbar" style="width: {{ student.attendance_percentage }}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        {% endif %}
+
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted">No students found.</td>
+                        <td colspan="{% if request.user.is_superuser %}5{% else %}6{% endif %}"
+                            class="text-center text-muted">No students found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

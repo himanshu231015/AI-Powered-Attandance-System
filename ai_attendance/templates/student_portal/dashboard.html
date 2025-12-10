@@ -1,93 +1,264 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-md-8">
-        <h2 class="text-primary">Welcome, {{ student.name }}</h2>
-        <p class="text-muted">Roll Number: {{ student.roll_number }}</p>
-    </div>
-    <div class="col-md-4 text-end">
-        <a href="{% url 'change_password' %}" class="btn btn-warning me-2">
-            <i class="fas fa-key me-2"></i>Change Password
-        </a>
-        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-            <i class="fas fa-edit me-2"></i>Edit Profile
-        </button>
-    </div>
-</div>
-
-<div class="card shadow mb-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Profile Details</h5>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>Email:</strong> {{ student.email|default:"Not set" }}</p>
-                <p><strong>Phone:</strong> {{ student.phone_number|default:"Not set" }}</p>
-                <p><strong>Department:</strong> {{ student.department|default:"Not set" }}</p>
+<div class="row">
+    <!-- Sidebar Navigation -->
+    <div class="col-md-3 mb-4">
+        <div class="list-group shadow sticky-top" style="top: 20px; z-index: 100;">
+            <div class="list-group-item bg-primary text-white fw-bold">
+                <i class="fas fa-bars me-2"></i>Dashboard Menu
             </div>
-            <div class="col-md-6">
-                <p><strong>Date of Birth:</strong> {{ student.date_of_birth|default:"Not set" }}</p>
-                <p><strong>Address:</strong> {{ student.address|default:"Not set" }}</p>
-            </div>
+            <a href="#" class="list-group-item list-group-item-action list-group-item-light"
+                data-section="home-section">
+                <i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard
+            </a>
+            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="profile">
+                <i class="fas fa-user me-2 text-primary"></i>Profile Details
+            </a>
+            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="overall">
+                <i class="fas fa-chart-pie me-2 text-info"></i>Overall Attendance
+            </a>
+            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="subject">
+                <i class="fas fa-tasks me-2 text-success"></i>Subject Attendance
+            </a>
+            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="history">
+                <i class="fas fa-history me-2 text-warning"></i>Attendance History
+            </a>
+            <a href="{% url 'change_password' %}" class="list-group-item list-group-item-action list-group-item-light">
+                <i class="fas fa-key me-2 text-dark"></i>Change Password
+            </a>
         </div>
     </div>
-</div>
 
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card shadow h-100 border-primary">
-            <div class="card-body text-center">
-                <h5 class="card-title text-primary"><i class="fas fa-check-circle me-2"></i>Current Attendance</h5>
-                <h2 class="display-4 fw-bold">{{ current_attendance_count }}</h2>
-                <p class="text-muted">Classes Attended</p>
+    <!-- Main Content Area -->
+    <div class="col-md-9">
+
+        <!-- Home Section (Visible by Default) -->
+        <div id="home-section" class="content-section">
+            <div class="card shadow border-primary mb-4">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-user-graduate fa-5x text-primary"></i>
+                    </div>
+                    <h2 class="display-5 fw-bold text-dark">{{ student.name }}</h2>
+                    <p class="lead text-muted mb-4">Student Profile</p>
+
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <ul class="list-group list-group-flush text-start">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">Roll Number</span>
+                                    <span>{{ student.roll_number }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">Branch / Department</span>
+                                    <span>{{ student.department|default:"Not Assigned" }}</span>
+                                </li>
+                                <!-- Year is not in model, omitting as per plan -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card shadow h-100 border-success">
-            <div class="card-body text-center">
-                <h5 class="card-title text-success"><i class="fas fa-chart-line me-2"></i>Next Week Projection</h5>
-                <h2 class="display-4 fw-bold">{{ projected_attendance }}</h2>
-                <p class="text-muted">Potential Total (If you attend all {{ weekly_classes_count }} classes next week)
-                </p>
+
+        <!-- Section: Profile -->
+        <div id="profile" class="card shadow mb-4 content-section" style="display: none;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-user me-2"></i>Profile Details</h5>
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal"
+                    data-bs-target="#editProfileModal">
+                    <i class="fas fa-edit me-2"></i>Edit
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Email:</strong> {{ student.email|default:"Not set" }}</p>
+                        <p><strong>Phone:</strong> {{ student.phone_number|default:"Not set" }}</p>
+                        <p><strong>Department:</strong> {{ student.department|default:"Not set" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Date of Birth:</strong> {{ student.date_of_birth|default:"Not set" }}</p>
+                        <p><strong>Address:</strong> {{ student.address|default:"Not set" }}</p>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="card shadow">
-    <div class="card-header bg-success text-white">
-        <h5 class="mb-0"><i class="fas fa-history me-2"></i>My Attendance History</h5>
-    </div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Subject</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for record in records %}
-                <tr>
-                    <td>{{ record.date }}</td>
-                    <td>{{ record.time }}</td>
-                    <td>{{ record.subject|default:"-" }}</td>
-                    <td><span class="badge bg-success">{{ record.status }}</span></td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No attendance records found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+        <!-- Section: Overall Stats & Projection -->
+        <div id="overall" class="content-section" style="display: none;">
+            <div class="row">
+                <!-- Card 1: Current Attendance -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card shadow h-100 border-primary">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-primary"><i class="fas fa-check-circle me-2"></i>Current
+                                Attendance</h5>
+                            <h2 class="display-4 fw-bold">{{ current_attendance_count }}</h2>
+                            <p class="text-muted">Classes Attended</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Overall Attendance -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card shadow h-100 border-info">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-info"><i class="fas fa-chart-pie me-2"></i>Overall Attendance
+                            </h5>
+                            <h2 class="display-4 fw-bold">{{ overall_percentage }}%</h2>
+                            <p class="text-muted">Total Classes Held: {{ total_classes }}</p>
+                            <!-- Progress Line -->
+                            <div class="progress mt-2" style="height: 10px;">
+                                <div class="progress-bar {% if overall_percentage >= 75 %}bg-success{% elif overall_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                    role="progressbar" style="width: {{ overall_percentage }}%;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Next Week Projection -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card shadow border-warning h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-warning fw-bold">Next Week</h5>
+                            <h2 class="display-4 fw-bold text-dark">{{ prediction_week }}%</h2>
+                            <p class="text-muted mb-2">Projected</p>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-warning" role="progressbar"
+                                    style="width: {{ prediction_week }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Next Month Projection -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="card shadow h-100" style="border-color: #6f42c1;">
+                        <div class="card-body text-center">
+                            <h5 class="card-title fw-bold" style="color: #6f42c1;">Next Month</h5>
+                            <h2 class="display-4 fw-bold text-dark">{{ prediction_month }}%</h2>
+                            <p class="text-muted mb-2">Projected</p>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar"
+                                    style="width: {{ prediction_month }}%; background-color: #6f42c1;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section: Subject Attendance -->
+        <div id="subject" class="card shadow mb-4 content-section" style="display: none;">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Subject Attendance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for sub in subject_attendance %}
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-bold">{{ sub.subject }}</span>
+                            <span>{{ sub.present }}/{{ sub.total }} ({{ sub.percentage }}%)</span>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                role="progressbar" style="width: {{ sub.percentage }}%;"
+                                aria-valuenow="{{ sub.percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ sub.percentage }}%
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center text-muted">No attendance data by subject yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section: History -->
+        <div id="history" class="card shadow content-section" style="display: none;">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>My Attendance History</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr>
+                            <td>{{ record.date }}</td>
+                            <td>{{ record.time }}</td>
+                            <td>{{ record.subject|default:"-" }}</td>
+                            <td>
+                                <span
+                                    class="badge {% if record.status == 'Absent' %}bg-danger{% else %}bg-success{% endif %}">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">No attendance records found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const links = document.querySelectorAll('.list-group-item[data-section]');
+                const sections = document.querySelectorAll('.content-section');
+
+                function showSection(sectionId) {
+                    // Hide all sections
+                    sections.forEach(sec => sec.style.display = 'none');
+
+                    // Show target section
+                    const target = document.getElementById(sectionId);
+                    if (target) {
+                        target.style.display = sectionId === 'overall' ? 'flex' : 'block'; // 'flex' for the row
+                    }
+
+                    // Update active link state
+                    links.forEach(link => {
+                        link.classList.remove('active', 'bg-primary', 'text-white');
+                        link.classList.add('list-group-item-light');
+                        if (link.getAttribute('data-section') === sectionId) {
+                            link.classList.add('active', 'bg-primary', 'text-white');
+                            link.classList.remove('list-group-item-light');
+                        }
+                    });
+                }
+
+                // Attach click events
+                links.forEach(link => {
+                    link.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const sectionId = this.getAttribute('data-section');
+                        showSection(sectionId);
+                    });
+                });
+
+                // Show home by default
+                showSection('home-section');
+            });
+        </script>
+
+    </div> <!-- End Main Content Col -->
+</div> <!-- End Row -->
 
 <!-- Edit Profile Modal -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">

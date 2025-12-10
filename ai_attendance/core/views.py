@@ -355,9 +355,24 @@ def add_student(request):
         
     return render(request, 'add_student.html')
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def manage_students(request):
     students = Student.objects.all().order_by('-created_at')
+    
+    # Calculate attendance for each student
+    for student in students:
+        total_classes = AttendanceRecord.objects.filter(student=student).count()
+        present_count = AttendanceRecord.objects.filter(student=student, status='Present').count()
+        
+        if total_classes > 0:
+            percentage = round((present_count / total_classes) * 100, 1)
+        else:
+            percentage = 0
+            
+        student.attendance_percentage = percentage
+        student.total_classes = total_classes
+        student.present_count = present_count
+        
     return render(request, 'manage_students.html', {'students': students})
 
 @user_passes_test(lambda u: u.is_superuser)
@@ -477,17 +492,63 @@ def student_dashboard(request):
     # Calculate attendance stats
     current_attendance_count = AttendanceRecord.objects.filter(student=student, status='Present').count()
     
-    # Simple projection logic (placeholder)
-    weekly_classes_count = TimeTable.objects.count() # This is total slots, maybe filter by student's dept/year if applicable
-    projected_attendance = current_attendance_count # Just a placeholder
+    # Subject-wise Attendance Logic
+    all_records = AttendanceRecord.objects.filter(student=student)
+    subject_stats = {}
     
+    for record in all_records:
+        # Use subject from record, default to "General" if None
+        subj = record.subject if record.subject else "General"
+        
+        if subj not in subject_stats:
+            subject_stats[subj] = {'present': 0, 'total': 0}
+            
+        subject_stats[subj]['total'] += 1
+        if record.status == 'Present':
+            subject_stats[subj]['present'] += 1
+            
+    subject_attendance = []
+    for subj, stats in subject_stats.items():
+        total = stats['total']
+        present = stats['present']
+        percentage = (present / total * 100) if total > 0 else 0
+        subject_attendance.append({
+            'subject': subj,
+            'present': present,
+            'total': total,
+            'percentage': round(percentage, 1)
+        })
+    
+    # Overall Statistics
+    total_classes = all_records.count()
+    overall_percentage = (current_attendance_count / total_classes * 100) if total_classes > 0 else 0
+    
+    # Prediction Logic
+    # Estimate weekly classes from Timetable count or default
+    weekly_classes_count = TimeTable.objects.count()
+    if weekly_classes_count == 0:
+        weekly_classes_count = 15 # Default assumption if no timetable
+        
+    # Predict Next Week (Assuming full attendance)
+    pred_week_present = current_attendance_count + weekly_classes_count
+    pred_week_total = total_classes + weekly_classes_count
+    pred_week_pct = (pred_week_present / pred_week_total * 100) if pred_week_total > 0 else 0
+    
+    # Predict Next Month (Assuming full attendance ~4 weeks)
+    pred_month_present = current_attendance_count + (weekly_classes_count * 4)
+    pred_month_total = total_classes + (weekly_classes_count * 4)
+    pred_month_pct = (pred_month_present / pred_month_total * 100) if pred_month_total > 0 else 0
+
     records = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time')[:10]
     
     context = {
         'student': student,
         'current_attendance_count': current_attendance_count,
-        'weekly_classes_count': weekly_classes_count,
-        'projected_attendance': projected_attendance,
+        'total_classes': total_classes,
+        'overall_percentage': round(overall_percentage, 1),
         'records': records,
+        'subject_attendance': subject_attendance,
+        'prediction_week': round(pred_week_pct, 1),
+        'prediction_month': round(pred_month_pct, 1),
     }
     return render(request, 'student_portal/dashboard.html', context)
