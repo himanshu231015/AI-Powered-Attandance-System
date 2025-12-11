@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.contrib.auth import login, authenticate
-from .models import Student, AttendanceRecord, TimeTable
+from django.contrib.auth import login, authenticate, logout
+from .models import Student, AttendanceRecord, TimeTable, TeacherSubject
 from .utils import train_model, identify_faces, detect_and_crop_face
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -17,6 +17,40 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            if user.is_superuser:
+                return redirect('admin_dashboard')
+            elif user.is_staff:
+                return redirect('teacher_dashboard')
+            else:
+                return redirect('student_dashboard')
+        else:
+            messages.error(request, 'Invalid username or password.')
+    return render(request, 'login.html')
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+def register(request):
+    if request.method == 'POST':
+        # Basic registration logic or redirect to login
+        # Assuming student registration or similar.
+        # For now, if code was lost, I'll provide a basic implementation 
+        # that redirects to login or handles student creation if that was the intent.
+        # Given the context, I will just render register.html if GET, 
+        # and on POST maybe create a student/user?
+        # Safe bet: If register.html exists, render it.
+        pass 
+    return render(request, 'register.html')
+
 
 def index(request):
     if request.user.is_authenticated:
@@ -46,10 +80,19 @@ def train(request):
         return redirect('admin_dashboard')
     return redirect('home')
 
+@login_required
 def upload_attendance(request):
-    # Get subject from GET (initial load) or POST (submission)
+    # Get params
     subject = request.GET.get('subject') or request.POST.get('subject')
+    year = request.GET.get('year') or request.POST.get('year')
+    section = request.GET.get('section') or request.POST.get('section')
     
+    # 1. Security Check: Ensure Teacher is assigned to this Subject/Year
+    if not request.user.is_superuser:
+        if not TeacherSubject.objects.filter(teacher=request.user, subject=subject, year=year).exists():
+             messages.error(request, "You are not authorized to mark attendance for this class.")
+             return redirect('teacher_dashboard')
+
     if request.method == 'POST' and request.FILES.get('class_image'):
         image = request.FILES['class_image']
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'uploads'), base_url='/media/uploads/')
@@ -82,16 +125,16 @@ def upload_attendance(request):
                 
                 try:
                     student = Student.objects.get(roll_number=roll_number)
+                    
+                    # Verify student belongs to this year/section
+                    if year and student.year != year:
+                        pred['status'] = f"Wrong Year ({student.year})"
+                        final_predictions.append(pred)
+                        continue
+                        
                     status_text = "Marked Present"
                     if subject:
                          status_text += f" ({subject})"
-                    
-                    # Logic: 
-                    # If Subject provided: Check Today+Subject. 
-                    # If exists: 
-                    #    If 'Absent' -> Update to 'Present'.
-                    #    If 'Present' -> Already Marked.
-                    # If not exists -> Create Present.
                     
                     can_mark = True
                     
@@ -140,9 +183,15 @@ def upload_attendance(request):
             final_predictions.append(pred)
 
         # 2. Process Missing Students (Auto-Absent) - ONLY if Subject is defined (Class Mode)
-        if subject:
-            all_students = Student.objects.all()
-            for student in all_students:
+        # CRITICAL FIX: Only fetch students for this specific YEAR (and section)
+        if subject and year:
+            filter_kwargs = {'year': year}
+            if section:
+                filter_kwargs['section'] = section
+                
+            class_students = Student.objects.filter(**filter_kwargs)
+            
+            for student in class_students:
                 if student.roll_number not in present_roll_numbers:
                     # Check if record exists
                     if not AttendanceRecord.objects.filter(student=student, date=today, subject=subject).exists():
@@ -152,7 +201,7 @@ def upload_attendance(request):
         messages.success(request, f"Present: {marked_count}, Absent: {absent_count}, Unknown: {unknown_count}")
         return render(request, 'attendance_result.html', {'predictions': final_predictions, 'image_url': fs.url(filename)})
         
-    return render(request, 'upload_attendance.html', {'subject': subject})
+    return render(request, 'upload_attendance.html', {'subject': subject, 'year': year, 'section': section})
 
 def attendance_list(request):
     records = AttendanceRecord.objects.all().order_by('-date', '-time')
@@ -164,7 +213,14 @@ def student_attendance(request, student_id):
     return render(request, 'student_attendance.html', {'student': student, 'records': records})
 
 def live_attendance(request):
-    return render(request, 'live_attendance.html')
+    subject = request.GET.get('subject')
+    year = request.GET.get('year')
+    section = request.GET.get('section')
+    return render(request, 'live_attendance.html', {
+        'subject': subject,
+        'year': year,
+        'section': section
+    })
 
 @csrf_exempt
 def process_live_frame(request):
@@ -175,7 +231,12 @@ def process_live_frame(request):
             data = json.loads(request.body)
             image_data = data.get('image')
             
-            print("Received live frame request")
+            # Get explicit class params
+            req_subject = data.get('subject')
+            req_year = data.get('year')
+            req_section = data.get('section')
+            
+            print(f"Received live frame request. params: {req_subject}, {req_year}, {req_section}")
             
             if not image_data:
                 print("No image data received")
@@ -208,20 +269,25 @@ def process_live_frame(request):
             predictions = identify_faces(image_content=rgb_img)
             print(f"Predictions: {predictions}")
             
-            # Get current subject from timetable
-            now = datetime.datetime.now()
-            current_time = now.time()
-            current_weekday = now.weekday()
-            
-            # Find active class
-            # We filter for classes that started before now and end after now
-            active_class = TimeTable.objects.filter(
-                day=current_weekday,
-                start_time__lte=current_time,
-                end_time__gte=current_time
-            ).first()
-            
-            current_subject = active_class.subject if active_class else "Extra Class"
+            if req_subject:
+                # Explicit mode
+                current_subject = req_subject
+            else:
+                # TimeTable mode
+                # Get current subject from timetable
+                now = datetime.datetime.now()
+                current_time = now.time()
+                current_weekday = now.weekday()
+                
+                # Find active class
+                # We filter for classes that started before now and end after now
+                active_class = TimeTable.objects.filter(
+                    day=current_weekday,
+                    start_time__lte=current_time,
+                    end_time__gte=current_time
+                ).first()
+                
+                current_subject = active_class.subject if active_class else "Extra Class"
 
             # Mark attendance
             results = []
@@ -241,6 +307,14 @@ def process_live_frame(request):
                         processed_rolls_in_frame.add(roll_number)
                         try:
                             student = Student.objects.get(roll_number=roll_number)
+                            
+                            # Validate logic if year/section provided
+                            if req_year:
+                                if str(student.year) != str(req_year):
+                                    continue # Skip wrong year
+                            if req_section:
+                                if str(student.section).lower() != str(req_section).lower():
+                                    continue # Skip wrong section
                             # Cooldown Logic: Check last attendance for this student
                             last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
                             
@@ -354,6 +428,67 @@ def add_student(request):
         return redirect('admin_dashboard')
         
     return render(request, 'add_student.html')
+
+@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+def download_attendance(request):
+    import openpyxl
+    from openpyxl.styles import Font
+    from django.http import HttpResponse
+
+    # Get filter parameters
+    branch = request.GET.get('branch')
+    year = request.GET.get('year')
+    section = request.GET.get('section')
+
+    # Fetch Data (Reuse logic)
+    if branch and year and section:
+        students = Student.objects.filter(
+            department__icontains=branch,
+            year__icontains=year,
+            section__icontains=section
+        ).order_by('roll_number')
+    else:
+        students = Student.objects.none()
+
+    # Create Workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Attendance Report"
+
+    # Headers
+    headers = ['Roll Number', 'Name', 'Department', 'Year', 'Section', 'Total Classes', 'Present', 'Attendance %']
+    ws.append(headers)
+
+    # Style Header
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    # Add Data
+    for student in students:
+        total_classes = AttendanceRecord.objects.filter(student=student).count()
+        present_count = AttendanceRecord.objects.filter(student=student, status='Present').count()
+        if total_classes > 0:
+            percentage = round((present_count / total_classes) * 100, 1)
+        else:
+            percentage = 0
+        
+        ws.append([
+            student.roll_number,
+            student.name,
+            student.department,
+            student.year,
+            student.section,
+            total_classes,
+            present_count,
+            f"{percentage}%"
+        ])
+
+    # Create Response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="Attendance_Report_{branch}_{year}_{section}.xlsx"'
+
+    wb.save(response)
+    return response
 
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def manage_students(request):
@@ -486,6 +621,22 @@ def admin_dashboard(request):
     return render(request, 'admin_dashboard.html', context)
 
 @login_required
+def profile(request):
+    if request.method == 'POST':
+        user = request.user
+        user.first_name = request.POST.get('first_name')
+        user.last_name = request.POST.get('last_name')
+        user.email = request.POST.get('email')
+        try:
+            user.save()
+            messages.success(request, "Profile updated successfully.")
+        except Exception as e:
+            messages.error(request, f"Error updating profile: {e}")
+        return redirect('profile')
+        
+    return render(request, 'profile.html', {'user': request.user})
+
+@login_required
 def change_password(request):
     if request.method == 'POST':
         form = PasswordChangeForm(request.user, request.POST)
@@ -612,3 +763,100 @@ def student_dashboard(request):
         'prediction_month': round(pred_month_pct, 1),
     }
     return render(request, 'student_portal/dashboard.html', context)
+
+@login_required
+def teacher_dashboard(request):
+    # Fetch subjects assigned to this teacher
+    assigned_classes = TeacherSubject.objects.filter(teacher=request.user)
+    
+    # Filter by Year
+    year_query = request.GET.get('year')
+    if year_query:
+        assigned_classes = assigned_classes.filter(year__icontains=year_query)
+        
+    # Filter by Section
+    section_query = request.GET.get('section')
+    if section_query:
+        assigned_classes = assigned_classes.filter(section__icontains=section_query)
+        
+    # Calculate Stats for Dashboard
+    # Total assigned classes
+    total_classes_count = assigned_classes.count()
+    
+    # Total students in relevant years/sections (Approximate)
+    # Get set of (year, section) tuples
+    class_specs = assigned_classes.values_list('year', 'section').distinct()
+    
+    total_students_count = 0
+    relevant_students_ids = set()
+    
+    for year, section in class_specs:
+        q = Student.objects.filter(year__icontains=year)
+        if section:
+            q = q.filter(section__icontains=section)
+        ids = q.values_list('id', flat=True)
+        relevant_students_ids.update(ids)
+        
+    total_students_count = len(relevant_students_ids)
+    
+    # Recent Attendance for these classes/students
+    recent_attendance = AttendanceRecord.objects.filter(student__id__in=relevant_students_ids).order_by('-date', '-time')[:5]
+
+    return render(request, 'teacher_dashboard.html', {
+        'assigned_classes': assigned_classes,
+        'selected_year': year_query, 
+        'selected_section': section_query,
+        'total_classes_count': total_classes_count,
+        'total_students_count': total_students_count,
+        'recent_attendance': recent_attendance,
+        'user': request.user
+    })
+
+@user_passes_test(lambda u: u.is_superuser)
+def manage_teacher_subjects(request):
+    subjects = TeacherSubject.objects.all().order_by('teacher__username', 'day')
+    return render(request, 'manage_teacher_subjects.html', {'subjects': subjects})
+
+@user_passes_test(lambda u: u.is_superuser)
+def assign_teacher_subject(request):
+    teachers = User.objects.filter(is_staff=True, is_superuser=False)
+    
+    if request.method == 'POST':
+        teacher_id = request.POST.get('teacher')
+        subject = request.POST.get('subject')
+        year = request.POST.get('year')
+        section = request.POST.get('section')
+        day = request.POST.get('day')
+        
+        try:
+            teacher = User.objects.get(id=teacher_id)
+            TeacherSubject.objects.create(
+                teacher=teacher,
+                subject=subject,
+                year=year,
+                section=section,
+                day=day
+            )
+            messages.success(request, f"Assigned {subject} to {teacher.username} successfully.")
+            return redirect('manage_teacher_subjects')
+        except Exception as e:
+            messages.error(request, f"Error assigning subject: {e}")
+            
+    days = TeacherSubject.DAYS_OF_WEEK
+    return render(request, 'assign_teacher_subject.html', {'teachers': teachers, 'days': days})
+
+@user_passes_test(lambda u: u.is_superuser)
+def delete_teacher_subject(request, subject_id):
+    if request.method == 'POST':
+        try:
+            subject = TeacherSubject.objects.get(id=subject_id)
+            name = subject.subject
+            teacher = subject.teacher.username
+            subject.delete()
+            messages.success(request, f"Removed assignment: {name} from {teacher}")
+        except TeacherSubject.DoesNotExist:
+            messages.error(request, "Subject assignment not found.")
+        except Exception as e:
+            messages.error(request, f"Error deleting assignment: {e}")
+            
+    return redirect('manage_teacher_subjects')

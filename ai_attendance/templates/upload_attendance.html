@@ -12,6 +12,12 @@
                     {% csrf_token %}
                     {% if subject %}
                     <input type="hidden" name="subject" value="{{ subject }}">
+                    {% if year %}
+                    <input type="hidden" name="year" value="{{ year }}">
+                    {% endif %}
+                    {% if section %}
+                    <input type="hidden" name="section" value="{{ section }}">
+                    {% endif %}
                     <div class="alert alert-info mb-3">
                         Marking attendance for: <strong>{{ subject }}</strong>
                     </div>

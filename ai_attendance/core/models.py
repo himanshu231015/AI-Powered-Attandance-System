@@ -61,3 +61,22 @@ class Admin(User):
         proxy = True
         verbose_name = 'Admin'
         verbose_name_plural = 'Admins'
+
+class TeacherSubject(models.Model):
+    DAYS_OF_WEEK = (
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    )
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'is_staff': True, 'is_superuser': False})
+    subject = models.CharField(max_length=100)
+    year = models.CharField(max_length=10)
+    section = models.CharField(max_length=10, null=True, blank=True)
+    day = models.IntegerField(choices=DAYS_OF_WEEK, default=0)
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.subject} ({self.year}) - {self.get_day_display()}"

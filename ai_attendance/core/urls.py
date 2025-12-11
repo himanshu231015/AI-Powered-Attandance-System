@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('profile/', views.profile, name='profile'),
+    path('register/', views.register, name='register'),
     path('', views.home, name='home'),
     path('add_student/', views.add_student, name='add_student'),
     path('add_teacher/', views.add_teacher, name='add_teacher'),
@@ -12,10 +16,15 @@ urlpatterns = [
     path('live_attendance/', views.live_attendance, name='live_attendance'),
     path('process_live_frame/', views.process_live_frame, name='process_live_frame'),
     path('manage_students/', views.manage_students, name='manage_students'),
+    path('download_attendance/', views.download_attendance, name='download_attendance'),
     path('edit_student/<int:student_id>/', views.edit_student, name='edit_student'),
     path('delete_student/<int:student_id>/', views.delete_student, name='delete_student'),
     path('manage_teachers/', views.manage_teachers, name='manage_teachers'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('change_password/', views.change_password, name='change_password'),
+    path('teacher_dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
     path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
+    path('manage_teacher_subjects/', views.manage_teacher_subjects, name='manage_teacher_subjects'),
+    path('assign_teacher_subject/', views.assign_teacher_subject, name='assign_teacher_subject'),
+    path('delete_teacher_subject/<int:subject_id>/', views.delete_teacher_subject, name='delete_teacher_subject'),
 ]

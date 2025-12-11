@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="header-title">Manage Teacher Subjects</h2>
+            <a href="{% url 'assign_teacher_subject' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Assign New Subject
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Teacher</th>
+                        <th>Subject</th>
+                        <th>Year</th>
+                        <th>Section</th>
+                        <th>Day</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in subjects %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center"
+                                    style="width: 32px; height: 32px;">
+                                    {{ item.teacher.first_name|first|default:item.teacher.username|first|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">{{ item.teacher.get_full_name|default:item.teacher.username }}
+                                    </div>
+                                    <div class="small text-muted">{{ item.teacher.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="badge bg-info text-dark">{{ item.subject }}</span></td>
+                        <td>{{ item.year }}</td>
+                        <td>{{ item.section|default:"-" }}</td>
+                        <td><span class="badge bg-secondary">{{ item.get_day_display }}</span></td>
+                        <td>
+                            <form action="{% url 'delete_teacher_subject' item.id %}" method="post"
+                                onsubmit="return confirm('Are you sure you want to remove this assignment?');"
+                                style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove Assignment">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            <i class="fas fa-folder-open fa-3x mb-3 d-block opacity-50"></i>
+                            No subjects assigned yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

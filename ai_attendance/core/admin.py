@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Student, TimeTable, AttendanceRecord, Teacher
+from .models import Student, TimeTable, AttendanceRecord, TeacherSubject, Teacher
 
 from django import forms
 from django.conf import settings
@@ -126,9 +126,15 @@ try:
 except admin.sites.NotRegistered:
     pass
 
+class TeacherSubjectAdmin(admin.ModelAdmin):
+    list_display = ('teacher', 'subject', 'year', 'section', 'day')
+    list_filter = ('day', 'year', 'section', 'teacher')
+    search_fields = ('teacher__username', 'subject')
+
 admin.site.register(Student, StudentAdmin)
 admin.site.register(TimeTable, TimeTableAdmin)
 admin.site.register(AttendanceRecord, AttendanceRecordAdmin)
+admin.site.register(TeacherSubject, TeacherSubjectAdmin)
 admin.site.register(Teacher, TeacherAdmin)
 
 from .models import Admin

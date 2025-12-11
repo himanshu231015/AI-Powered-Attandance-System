@@ -5,7 +5,12 @@
     <div class="col-md-8">
         <div class="card shadow">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-video me-2"></i>Live Attendance</h5>
+                <div>
+                    <h5 class="mb-0"><i class="fas fa-video me-2"></i>Live Attendance</h5>
+                    {% if subject %}
+                    <small class="text-info">Class: {{ subject }} ({{ year }}-{{ section }})</small>
+                    {% endif %}
+                </div>
                 <div>
                     <select id="cameraSelect" class="form-select form-select-sm" style="width: 200px;">
                         <option value="">Loading cameras...</option>
@@ -71,6 +76,11 @@
     let stream = null;
     let autoInterval = null;
     let isProcessing = false;
+
+    // Django context variables
+    const CLASS_SUBJECT = "{{ subject|default:'' }}";
+    const CLASS_YEAR = "{{ year|default:'' }}";
+    const CLASS_SECTION = "{{ section|default:'' }}";
 
     // Load cameras
     async function getCameras() {
@@ -183,7 +193,12 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ image: imageData })
+                body: JSON.stringify({
+                    image: imageData,
+                    subject: CLASS_SUBJECT,
+                    year: CLASS_YEAR,
+                    section: CLASS_SECTION
+                })
             });
 
             const data = await response.json();

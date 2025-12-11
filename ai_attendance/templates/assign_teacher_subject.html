@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-book-reader me-2"></i>Assign Subject to Teacher</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="teacher" class="form-label">Teacher</label>
+                        <select class="form-select" id="teacher" name="teacher" required>
+                            <option value="">Select a Teacher...</option>
+                            {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.get_full_name|default:teacher.username }} ({{
+                                teacher.email }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="subject" class="form-label">Subject Name</label>
+                            <input type="text" class="form-control" id="subject" name="subject"
+                                placeholder="e.g. Mathematics" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="day" class="form-label">Day</label>
+                            <select class="form-select" id="day" name="day">
+                                {% for day_val, day_name in days %}
+                                <option value="{{ day_val }}">{{ day_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="year" class="form-label">Year</label>
+                            <input type="text" class="form-control" id="year" name="year" placeholder="e.g. 1" required>
+                            <div class="form-text">Target student year (e.g. 1, 2, 3, 4)</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="section" class="form-label">Section (Optional)</label>
+                            <input type="text" class="form-control" id="section" name="section" placeholder="e.g. A">
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-success btn-lg">Assign Subject</button>
+                        <a href="{% url 'manage_teacher_subjects' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,28 +3,38 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-12">
-        <h2 class="header-title">{% if request.user.is_superuser %}Manage Students{% else %}Student Attendance{% endif %}</h2>
-        
+        <h2 class="header-title">
+            {% if request.user.is_superuser %}Manage Students{% else %}Student Attendance{% endif %}
+        </h2>
+
         <!-- Search Form (Unified for Admin & Teacher) -->
         <div class="card mt-3 shadow-sm border-0 bg-light">
             <div class="card-body">
                 <form method="get" class="row g-3">
                     <div class="col-md-3">
                         <label for="branch" class="form-label fw-bold">Branch</label>
-                        <input type="text" class="form-control" id="branch" name="branch" placeholder="e.g. CSE" required value="{{ request.GET.branch|default:'' }}">
+                        <input type="text" class="form-control" id="branch" name="branch" placeholder="e.g. CSE"
+                            required value="{{ request.GET.branch|default:'' }}">
                     </div>
                     <div class="col-md-3">
                         <label for="year" class="form-label fw-bold">Year</label>
-                        <input type="number" class="form-control" id="year" name="year" placeholder="e.g. 1" required value="{{ request.GET.year|default:'' }}">
+                        <input type="number" class="form-control" id="year" name="year" placeholder="e.g. 1" required
+                            value="{{ request.GET.year|default:'' }}">
                     </div>
                     <div class="col-md-3">
                         <label for="section" class="form-label fw-bold">Section</label>
-                        <input type="text" class="form-control" id="section" name="section" placeholder="e.g. A" required value="{{ request.GET.section|default:'' }}">
+                        <input type="text" class="form-control" id="section" name="section" placeholder="e.g. A"
+                            required value="{{ request.GET.section|default:'' }}">
                     </div>
                     <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-search me-2"></i>Show Attendance
-                        </button>
+                        <div class="btn-group w-100" role="group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Show
+                            </button>
+                            <button type="submit" class="btn btn-success" formaction="{% url 'download_attendance' %}">
+                                <i class="fas fa-file-excel me-2"></i>Download
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -96,7 +106,8 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="{% if request.user.is_superuser %}9{% else %}4{% endif %}" class="text-center text-muted">No students found.</td>
+                        <td colspan="{% if request.user.is_superuser %}9{% else %}4{% endif %}"
+                            class="text-center text-muted">No students found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -109,5 +120,4 @@
     <i class="fas fa-info-circle me-2"></i> Please enter Branch, Year, and Section to view student attendance.
 </div>
 {% endif %}
-
 {% endblock %}
