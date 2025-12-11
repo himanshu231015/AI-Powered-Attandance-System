@@ -75,7 +75,7 @@
                                 <th>Year</th>
                                 <th>Section</th>
                                 <th>Day</th>
-                                <th>Action</th>
+                                <th class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -85,15 +85,19 @@
                                 <td>{{ item.year }}</td>
                                 <td>{{ item.section|default:"-" }}</td>
                                 <td><span class="badge bg-info text-dark">{{ item.get_day_display }}</span></td>
-                                <td>
-                                    <div class="btn-group" role="group">
+                                <td class="text-center">
+                                    <div class="d-flex gap-2">
                                         <a href="{% url 'live_attendance' %}?subject={{ item.subject }}&year={{ item.year }}{% if item.section %}&section={{ item.section }}{% endif %}"
-                                            class="btn btn-sm btn-outline-danger">
+                                            class="btn btn-sm btn-outline-danger flex-fill">
                                             <i class="fas fa-video me-1"></i> Live
                                         </a>
                                         <a href="{% url 'upload_attendance' %}?subject={{ item.subject }}&year={{ item.year }}{% if item.section %}&section={{ item.section }}{% endif %}"
-                                            class="btn btn-sm btn-outline-success">
+                                            class="btn btn-sm btn-outline-success flex-fill">
                                             <i class="fas fa-camera me-1"></i> Upload
+                                        </a>
+                                        <a href="{% url 'manual_attendance' %}?subject={{ item.subject }}&year={{ item.year }}{% if item.section %}&section={{ item.section }}{% endif %}"
+                                            class="btn btn-sm btn-outline-primary flex-fill">
+                                            <i class="fas fa-edit me-1"></i> Manual
                                         </a>
                                     </div>
                                 </td>

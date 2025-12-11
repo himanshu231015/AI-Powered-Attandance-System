@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+import datetime
 
 class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -38,7 +39,7 @@ class TimeTable(models.Model):
 
 class AttendanceRecord(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField(default=datetime.date.today)
     time = models.TimeField(auto_now_add=True)
     status = models.CharField(max_length=20, default='Present')
     subject = models.CharField(max_length=100, null=True, blank=True)
@@ -80,3 +81,16 @@ class TeacherSubject(models.Model):
 
     def __str__(self):
         return f"{self.teacher.username} - {self.subject} ({self.year}) - {self.get_day_display()}"
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notification_type = models.CharField(max_length=50, default='Attendance')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notification for {self.recipient.name}: {self.message}"

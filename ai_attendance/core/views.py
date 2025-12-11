@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
-from .models import Student, AttendanceRecord, TimeTable, TeacherSubject
+from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification
 from .utils import train_model, identify_faces, detect_and_crop_face
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -212,6 +212,82 @@ def student_attendance(request, student_id):
     records = AttendanceRecord.objects.filter(student=student).order_by('-date')
     return render(request, 'student_attendance.html', {'student': student, 'records': records})
 
+@login_required
+def manual_attendance(request):
+    subject_raw = request.GET.get('subject')
+    subject = subject_raw.strip() if subject_raw else ''
+    year = request.GET.get('year')
+    section = request.GET.get('section')
+
+    # Fetch students for this class
+    students = Student.objects.none()
+    if year:
+        students = Student.objects.filter(year__icontains=year)
+        if section:
+            students = students.filter(section__icontains=section)
+        students = students.order_by('roll_number')
+
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        try:
+            date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect(request.path)
+            
+        # Get list of student IDs marked as present
+        present_student_ids = request.POST.getlist('student_ids')
+        
+        count_present = 0
+        count_absent = 0
+        
+        current_time = datetime.datetime.now().time()
+        
+        for student in students:
+            is_present = str(student.id) in present_student_ids
+            status = 'Present' if is_present else 'Absent'
+            
+            # Explicitly check for existing record to avoid IntegrityError on race/auto_now issues
+            record = AttendanceRecord.objects.filter(
+                student=student,
+                date=date_obj,
+                subject=subject
+            ).first()
+
+            if record:
+                # Update existing
+                record.status = status
+                # record.time = datetime.datetime.now().time() # Optional: update time? Keep original time maybe better?
+                # Let's update time to show "last modified" or "marked at"
+                record.time = current_time
+                record.save()
+                create_notification(student, f"Attendance updated: {status} for {subject} on {date_obj}")
+            else:
+                # Create new
+                AttendanceRecord.objects.create(
+                    student=student,
+                    date=date_obj,
+                    subject=subject,
+                    status=status,
+                )
+                create_notification(student, f"Attendance marked: {status} for {subject} on {date_obj}")
+            
+            if is_present:
+                count_present += 1
+            else:
+                count_absent += 1
+            
+        messages.success(request, f"Attendance marked for {subject}: {count_present} Present, {count_absent} Absent.")
+        return redirect('teacher_dashboard')
+
+    return render(request, 'manual_attendance.html', {
+        'students': students, 
+        'subject': subject, 
+        'year': year, 
+        'section': section,
+        'today': datetime.date.today().strftime('%Y-%m-%d')
+    })
+
 def live_attendance(request):
     subject = request.GET.get('subject')
     year = request.GET.get('year')
@@ -337,6 +413,7 @@ def process_live_frame(request):
                             if can_mark:
                                 try:
                                     AttendanceRecord.objects.create(student=student, subject=current_subject)
+                                    create_notification(student, f"Marked Present for {current_subject} via Face ID")
                                     status_msg = f"Marked Present ({current_subject})"
                                 except Exception as e:
                                      # Likely IntegrityError
@@ -463,10 +540,19 @@ def download_attendance(request):
     for cell in ws[1]:
         cell.font = Font(bold=True)
 
+    # Determine if user is a teacher and filter subjects
+    assigned_subjects = None
+    if not request.user.is_superuser and request.user.is_staff:
+        assigned_subjects = TeacherSubject.objects.filter(teacher=request.user).values_list('subject', flat=True)
+
     # Add Data
     for student in students:
-        total_classes = AttendanceRecord.objects.filter(student=student).count()
-        present_count = AttendanceRecord.objects.filter(student=student, status='Present').count()
+        records = AttendanceRecord.objects.filter(student=student)
+        if assigned_subjects is not None:
+            records = records.filter(subject__in=assigned_subjects)
+            
+        total_classes = records.count()
+        present_count = records.filter(status='Present').count()
         if total_classes > 0:
             percentage = round((present_count / total_classes) * 100, 1)
         else:
@@ -511,10 +597,19 @@ def manage_students(request):
         else:
             students = Student.objects.none() # Teacher sees none
             
+    # Determine if user is a teacher and filter subjects
+    assigned_subjects = None
+    if not request.user.is_superuser and request.user.is_staff:
+        assigned_subjects = TeacherSubject.objects.filter(teacher=request.user).values_list('subject', flat=True)
+
     # Calculate attendance for each student (common logic)
     for student in students:
-        total_classes = AttendanceRecord.objects.filter(student=student).count()
-        present_count = AttendanceRecord.objects.filter(student=student, status='Present').count()
+        records = AttendanceRecord.objects.filter(student=student)
+        if assigned_subjects is not None:
+            records = records.filter(subject__in=assigned_subjects)
+            
+        total_classes = records.count()
+        present_count = records.filter(status='Present').count()
         
         if total_classes > 0:
             percentage = round((present_count / total_classes) * 100, 1)
@@ -860,3 +955,46 @@ def delete_teacher_subject(request, subject_id):
             messages.error(request, f"Error deleting assignment: {e}")
             
     return redirect('manage_teacher_subjects')
+
+# --- Notification Logic ---
+
+def create_notification(student, message, notif_type='Attendance'):
+    """Helper to create a notification for a student."""
+    try:
+        Notification.objects.create(
+            recipient=student,
+            message=message,
+            notification_type=notif_type
+        )
+    except Exception as e:
+        print(f"Error creating notification: {e}")
+
+@login_required
+def get_notifications(request):
+    """API to fetch unread notifications for the logged-in student."""
+    if hasattr(request.user, 'student'):
+        student = request.user.student
+        # Get unread notifications
+        notifications = Notification.objects.filter(recipient=student, is_read=False)[:10]
+        data = [{
+            'id': n.id,
+            'message': n.message,
+            'created_at': n.created_at.strftime('%H:%M %d-%m'),
+            'type': n.notification_type
+        } for n in notifications]
+        return JsonResponse({'status': 'success', 'notifications': data, 'count': len(data)})
+    return JsonResponse({'status': 'error', 'message': 'Not a student'}, status=403)
+
+@login_required
+@csrf_exempt
+def mark_notification_read(request, notif_id):
+    """API to mark a notification as read."""
+    if request.method == 'POST':
+        try:
+            notification = Notification.objects.get(id=notif_id, recipient__user=request.user)
+            notification.is_read = True
+            notification.save()
+            return JsonResponse({'status': 'success'})
+        except Notification.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Notification not found'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)

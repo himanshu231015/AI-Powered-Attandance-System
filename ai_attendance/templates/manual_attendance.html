@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-edit me-2"></i>Manual Attendance
+                </h4>
+                <div>
+                    <span class="badge bg-light text-primary fs-6 me-2">{{ subject }}</span>
+                    <span class="badge bg-light text-dark fs-6">{{ year }} - {{ section }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if not students %}
+                <div class="alert alert-warning">
+                    No students found for this class (Year: {{ year }}, Section: {{ section }}).
+                </div>
+                <div class="text-center">
+                    <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+                </div>
+                {% else %}
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="row mb-4 align-items-end">
+                        <div class="col-md-4">
+                            <label for="date" class="form-label fw-bold">Date</label>
+                            <input type="date" class="form-control" id="date" name="date" value="{{ today }}" required>
+                        </div>
+                        <div class="col-md-8 text-end">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="selectAll">
+                                <label class="form-check-label fw-bold" for="selectAll">Select All</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th>Roll Number</th>
+                                    <th>Student Name</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ student.roll_number }}</td>
+                                    <td>{{ student.name }}</td>
+                                    <td class="text-center">
+                                        <div class="form-check d-inline-block">
+                                            <input class="form-check-input student-checkbox" type="checkbox"
+                                                name="student_ids" value="{{ student.id }}" id="stu_{{ student.id }}"
+                                                checked>
+                                            <label class="form-check-label" for="stu_{{ student.id }}">
+                                                Present
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>Save Attendance
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+
+        // Check select all initially if all are checked
+        if (checkboxes.length > 0) {
+            selectAll.checked = Array.from(checkboxes).every(cb => cb.checked);
+        }
+
+        selectAll.addEventListener('change', function () {
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function () {
+                if (!this.checked) {
+                    selectAll.checked = false;
+                } else {
+                    const allChecked = Array.from(checkboxes).every(c => c.checked);
+                    selectAll.checked = allChecked;
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

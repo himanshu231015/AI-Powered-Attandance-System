@@ -61,6 +61,8 @@
                         <th>Actions</th>
                         {% else %}
                         <th>Branch</th>
+                        <th>Total Classes</th>
+                        <th>Present</th>
                         <th>Attendance</th>
                         {% endif %}
                     </tr>
@@ -92,6 +94,8 @@
                         </td>
                         {% else %}
                         <td>{{ student.department|default:"-" }}</td>
+                        <td class="text-center">{{ student.total_classes }}</td>
+                        <td class="text-center">{{ student.present_count }}</td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <span class="fw-bold me-2">{{ student.attendance_percentage }}%</span>

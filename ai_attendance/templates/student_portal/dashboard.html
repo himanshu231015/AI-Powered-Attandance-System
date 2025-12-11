@@ -27,6 +27,12 @@
             <a href="{% url 'change_password' %}" class="list-group-item list-group-item-action list-group-item-light">
                 <i class="fas fa-key me-2 text-dark"></i>Change Password
             </a>
+            <a href="#" class="list-group-item list-group-item-action list-group-item-light"
+                data-section="notifications">
+                <i class="fas fa-bell me-2 text-danger"></i>Notifications
+                <span id="notification-badge" class="badge bg-danger rounded-pill float-end"
+                    style="display: none;">0</span>
+            </a>
         </div>
     </div>
 
@@ -57,6 +63,42 @@
                                 <!-- Year is not in model, omitting as per plan -->
                             </ul>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holiday Calendar Card -->
+            <div class="card shadow border-success mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Holiday Calendar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(-1)"><i
+                                class="fas fa-chevron-left"></i></button>
+                        <h5 id="calendar-month-year" class="mb-0 fw-bold"></h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(1)"><i
+                                class="fas fa-chevron-right"></i></button>
+                    </div>
+
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <div class="text-danger">Sun</div>
+                            <div>Mon</div>
+                            <div>Tue</div>
+                            <div>Wed</div>
+                            <div>Thu</div>
+                            <div>Fri</div>
+                            <div class="text-danger">Sat</div>
+                        </div>
+                        <div id="calendar-days" class="calendar-days">
+                            <!-- JS GENERATED -->
+                        </div>
+                    </div>
+
+                    <div class="mt-3 small text-muted">
+                        <span class="d-inline-block rounded p-1 bg-danger text-white me-2">Weekend</span>
+                        <span>Sat & Sun are Holidays</span>
                     </div>
                 </div>
             </div>
@@ -176,6 +218,18 @@
                     <div class="col-12 text-center text-muted">No attendance data by subject yet.</div>
                     {% endfor %}
                 </div>
+            </div>
+        </div>
+
+        <!-- Section: Notifications -->
+        <div id="notifications" class="card shadow content-section" style="display: none;">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-bell me-2"></i>Notifications</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush" id="notification-list">
+                    <li class="list-group-item text-center text-muted">No new notifications.</li>
+                </ul>
             </div>
         </div>
 
@@ -304,4 +358,227 @@
         </div>
     </div>
 </div>
+
+<style>
+    .calendar-container {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .calendar-header,
+    .calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+    }
+
+    .calendar-header div {
+        background-color: #f8f9fa;
+        padding: 10px;
+        font-weight: bold;
+        border-bottom: 1px solid #ddd;
+    }
+
+    /* Dark mode support for header */
+    body.dark-mode .calendar-header div {
+        background-color: #2d2d2d;
+        border-bottom-color: #444;
+        color: #e0e0e0;
+    }
+
+    .calendar-days div {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+        border-right: 1px solid #eee;
+        min-height: 50px;
+        /* Consistent height */
+    }
+
+    body.dark-mode .calendar-days div {
+        border-color: #444;
+        color: #e0e0e0;
+    }
+
+    .calendar-days div:hover:not(.empty) {
+        background-color: #f0f0f0;
+        cursor: pointer;
+    }
+
+    body.dark-mode .calendar-days div:hover:not(.empty) {
+        background-color: #3d3d3d;
+    }
+
+    .calendar-days .today {
+        background-color: #e8f5e9;
+        font-weight: bold;
+        border: 2px solid #28a745;
+    }
+
+    body.dark-mode .calendar-days .today {
+        background-color: #1b5e20;
+        border-color: #66bb6a;
+    }
+
+    .calendar-days .holiday {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+
+    body.dark-mode .calendar-days .holiday {
+        background-color: #3e2723;
+        /* Darker red/brown */
+        color: #ef9a9a;
+    }
+
+    .calendar-days .empty {
+        background-color: #f9f9f9;
+        cursor: default;
+    }
+
+    body.dark-mode .calendar-days .empty {
+        background-color: #252525;
+    }
+</style>
+
+<script>
+    let currentDate = new Date();
+
+    function renderCalendar() {
+        const monthYear = document.getElementById('calendar-month-year');
+        const calendarDays = document.getElementById('calendar-days');
+
+        if (!monthYear || !calendarDays) return;
+
+        calendarDays.innerHTML = '';
+
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth(); // 0-11
+
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        monthYear.innerText = `${monthNames[month]} ${year}`;
+
+        // First day of the month (0=Sun, 1=Mon...)
+        const firstDay = new Date(year, month, 1).getDay();
+        // Days in month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Add empty cells for previous month
+        for (let i = 0; i < firstDay; i++) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty';
+            calendarDays.appendChild(emptyDiv);
+        }
+
+        // Add days
+        const today = new Date();
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dayDiv = document.createElement('div');
+            dayDiv.innerText = i;
+
+            // Check day of week for this date to mark holiday
+            const currentDayOfWeek = new Date(year, month, i).getDay();
+
+            if (currentDayOfWeek === 0 || currentDayOfWeek === 6) {
+                dayDiv.classList.add('holiday');
+            }
+
+            // Mark Today
+            if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                dayDiv.classList.add('today');
+            }
+
+            calendarDays.appendChild(dayDiv);
+        }
+    }
+
+    function changeMonth(step) {
+        currentDate.setMonth(currentDate.getMonth() + step);
+        renderCalendar();
+    }
+
+    // Bind to existing DOMContentLoaded or run immediately if late
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderCalendar);
+    } else {
+        renderCalendar();
+    }
+
+    // Notification Logic
+    function fetchNotifications() {
+        document.getElementById('notification-badge').style.display = 'none'; // reset initially
+        fetch("{% url 'get_notifications' %}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const badge = document.getElementById('notification-badge');
+                    const list = document.getElementById('notification-list');
+
+                    if (data.count > 0) {
+                        badge.innerText = data.count;
+                        badge.style.display = 'inline-block';
+
+                        // Update list
+                        let html = '';
+                        data.notifications.forEach(notif => {
+                            html += `
+                                <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                                    <div>
+                                        <div class="fw-bold">${notif.message}</div>
+                                        <small class="text-muted"><i class="fas fa-clock me-1"></i>${notif.created_at}</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-success" onclick="markRead(${notif.id}, this)">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </li>
+                            `;
+                        });
+                        list.innerHTML = html;
+                    } else {
+                        badge.style.display = 'none';
+                        list.innerHTML = '<li class="list-group-item text-center text-muted">No new notifications.</li>';
+                    }
+                }
+            })
+            .catch(err => console.error('Error fetching notifications:', err));
+    }
+
+    // Mark Read function (Global scope for onclick)
+    window.markRead = function (id, btn) {
+        fetch(`/core/notifications/read/${id}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Remove item from UI instantly for better UX
+                    const li = btn.closest('li');
+                    li.remove();
+
+                    // Update badge count
+                    const badge = document.getElementById('notification-badge');
+                    let count = parseInt(badge.innerText || '0');
+                    count = Math.max(0, count - 1);
+                    badge.innerText = count;
+                    if (count === 0) {
+                        badge.style.display = 'none';
+                        document.getElementById('notification-list').innerHTML = '<li class="list-group-item text-center text-muted">No new notifications.</li>';
+                    }
+                }
+            });
+    };
+
+    // Poll every 10 seconds
+    setInterval(fetchNotifications, 10000);
+    // Initial call
+    fetchNotifications();
+</script>
 {% endblock %}
