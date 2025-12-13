@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
-from core.models import Student, AttendanceRecord, TimeTable
+from core.models import Student, AttendanceRecord, TimeTable, TeacherSubject
 from django.contrib import messages
 import datetime
 import csv
@@ -12,36 +12,28 @@ def is_teacher(user):
 @login_required
 @user_passes_test(is_teacher)
 def teacher_dashboard(request):
-    total_students = Student.objects.count()
-    total_attendance = AttendanceRecord.objects.count()
+    # Get assigned classes for the logged-in teacher
+    assigned_classes = TeacherSubject.objects.filter(teacher=request.user)
     
-    # Get today's timetable
-    # Get today's timetable or selected day
-    today_weekday = datetime.datetime.today().weekday()
-    selected_day = request.GET.get('day')
+    # Calculate counts
+    total_classes_count = assigned_classes.count()
+    total_students_count = Student.objects.count()
     
-    if selected_day is not None:
-        try:
-            selected_day = int(selected_day)
-        except ValueError:
-            selected_day = today_weekday
-    else:
-        selected_day = today_weekday
-        
-    timetable = TimeTable.objects.filter(day=selected_day).order_by('start_time')
+    # Filter handling
+    selected_year = request.GET.get('year')
+    selected_section = request.GET.get('section')
     
-    # Day names for template
-    days = [
-        (0, 'Monday'), (1, 'Tuesday'), (2, 'Wednesday'), 
-        (3, 'Thursday'), (4, 'Friday'), (5, 'Saturday'), (6, 'Sunday')
-    ]
-    
+    if selected_year:
+        assigned_classes = assigned_classes.filter(year=selected_year)
+    if selected_section:
+        assigned_classes = assigned_classes.filter(section=selected_section)
+
     return render(request, 'teacher_portal/dashboard.html', {
-        'total_students': total_students,
-        'total_attendance': total_attendance,
-        'timetable': timetable,
-        'selected_day': selected_day,
-        'days': days
+        'total_students_count': total_students_count,  # Fixed: changed from total_students
+        'total_classes_count': total_classes_count,    # Fixed: added this
+        'assigned_classes': assigned_classes,          # Fixed: passing filtered queryset
+        'selected_year': selected_year,
+        'selected_section': selected_section,
     })
 
 @login_required

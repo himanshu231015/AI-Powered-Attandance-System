@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
 from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification
-from .utils import train_model, identify_faces, detect_and_crop_face
+from .utils import train_model, identify_faces, detect_and_crop_face, get_existing_attendance_record
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
@@ -143,24 +143,13 @@ def upload_attendance(request):
                     can_mark = True
                     
                     if subject:
-                         # Time-based lookup for existing record (60 mins window)
-                         cutoff_time = timezone.now() - datetime.timedelta(minutes=60)
-                         records = AttendanceRecord.objects.filter(student=student, date=today, subject=subject).order_by('-time')
-                         existing_record = None
-                         for record in records:
-                             dt_naive = datetime.datetime.combine(record.date, record.time)
-                             if timezone.is_naive(dt_naive):
-                                 dt_aware = timezone.make_aware(dt_naive, timezone.get_current_timezone())
-                             else:
-                                 dt_aware = dt_naive
-                             if dt_aware > cutoff_time:
-                                 existing_record = record
-                                 break
+                         # Use unified helper for duplicate check
+                         # Fix: Use local time for check matching TimeTable slots
+                         existing_record = get_existing_attendance_record(student, subject, today, datetime.datetime.now().time())
                          
                          if existing_record:
                              if existing_record.status == 'Absent':
                                  existing_record.status = 'Present'
-                                 # existing_record.time = timezone.now().time() # Don't update time, keep original slot time
                                  existing_record.save()
                                  status_text = f"Marked Present (Was Absent) - ({subject})"
                                  marked_count += 1
@@ -284,34 +273,10 @@ def manual_attendance(request):
             is_present = str(student.id) in present_student_ids
             status = 'Present' if is_present else 'Absent'
             
-            # Use specific time for lookup if provided, effectively disabling "cooldown" merging for different times
-            # But if updating same slot, we should find it.
-            # Logic: If record exists for this student + date + subject, check if time matches closely OR if it was just created (auto-now behavior prev).
-            # With explicit time, we can be more strict. Let's look for record with same date and approx same time (e.g. within 5 mins) to allowing editing.
-            
-            cutoff_start = datetime.datetime.combine(date_obj, current_time) - datetime.timedelta(minutes=10)
-            cutoff_end = datetime.datetime.combine(date_obj, current_time) + datetime.timedelta(minutes=10)
-            
-            # Naive/Aware handling
-            if timezone.is_aware(timezone.now()):
-                 cutoff_start = timezone.make_aware(cutoff_start)
-                 cutoff_end = timezone.make_aware(cutoff_end)
-                 
-            possible_records = AttendanceRecord.objects.filter(student=student, date=date_obj, subject=subject).order_by('-time')
-            record = None
-            
-            for r in possible_records:
-                dt_naive = datetime.datetime.combine(r.date, r.time)
-                if timezone.is_aware(timezone.now()):
-                    dt_check = timezone.make_aware(dt_naive, timezone.get_current_timezone())
-                else:
-                    dt_check = dt_naive
-                    
-                # Loose check around the target time to allow editing
-                # If naive comparison:
-                if cutoff_start <= dt_check <= cutoff_end:
-                    record = r
-                    break
+            # Unified lookup
+            # Use provided time or current time for reference
+            ref_time = current_time
+            record = get_existing_attendance_record(student, subject, date_obj, ref_time)
 
             if record:
                 # Update existing
@@ -521,29 +486,12 @@ def process_live_frame(request):
                             
                             if req_subject:
                                  # Explicit Subject Mode (Dashboard)
-                                 # Use Window Logic (+/- 20 mins around current_time)
-                                 # This allows marking 11:10 and 12:00 separately.
+                                 # Use unified helper
+                                 existing_record = get_existing_attendance_record(student, req_subject, datetime.date.today(), current_time)
                                  
-                                 cutoff_start = datetime.datetime.combine(datetime.date.today(), current_time) - datetime.timedelta(minutes=20)
-                                 cutoff_end = datetime.datetime.combine(datetime.date.today(), current_time) + datetime.timedelta(minutes=20)
-                                 
-                                 if timezone.is_aware(timezone.now()):
-                                     cutoff_start = timezone.make_aware(cutoff_start)
-                                     cutoff_end = timezone.make_aware(cutoff_end)
-                                     
-                                 existing_records = AttendanceRecord.objects.filter(student=student, date=datetime.date.today(), subject=current_subject)
-                                 
-                                 for r in existing_records:
-                                     dt_naive = datetime.datetime.combine(r.date, r.time)
-                                     if timezone.is_aware(timezone.now()):
-                                         dt_check = timezone.make_aware(dt_naive, timezone.get_current_timezone())
-                                     else:
-                                         dt_check = dt_naive
-                                         
-                                     if cutoff_start <= dt_check <= cutoff_end:
-                                         can_mark = False
-                                         status_msg = f"Already Marked ({current_time.strftime('%H:%M')})"
-                                         break
+                                 if existing_record:
+                                     can_mark = False
+                                     status_msg = f"Already Marked ({existing_record.time.strftime('%H:%M')})"
                             else:
                                 # Fallback / Timetable Mode (Auto-detect)
                                 # Use Global Cooldown (1 hour) to prev spam

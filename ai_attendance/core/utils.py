@@ -2,7 +2,95 @@ import os
 import pickle
 import numpy as np
 from django.conf import settings
-from .models import Student
+import datetime
+from django.utils import timezone
+from .models import Student, AttendanceRecord, TeacherSubject, TimeTable
+
+def get_existing_attendance_record(student, subject, date, ref_time=None):
+    """
+    Finds an existing attendance record for the student/subject/date 
+    that matches the lecture slot covering ref_time, or a fall-back window.
+    Params:
+    - student: Student object
+    - subject: Subject name (string)
+    - date: datetime.date object
+    - ref_time: datetime.time object (marking time). Defaults to now.
+    """
+    if ref_time is None:
+        ref_time = datetime.datetime.now().time()
+
+    # 1. Try to find the Class Slot (TeacherSubject or TimeTable)
+    # Convert date to weekday (0=Mon, 6=Sun)
+    weekday = date.weekday()
+    
+    # Check TeacherSubject first (Assigned Classes)
+    # Find a class for this subject on this day where ref_time is close to start/end
+    # We'll consider a "Slot" relevant if marking happens between Start-45min and End+45min
+    
+    # We need to filter by subject matching.
+    # Note: Subject names might be loose, but we'll try exact first.
+    
+    matched_slot = None
+    
+    # Logic: Look for any slot for this subject on this day
+    # Then see if ref_time is "within range" of that slot.
+    
+    slots = TeacherSubject.objects.filter(subject__iexact=subject, day=weekday)
+    if not slots.exists():
+        # Fallback to TimeTable
+        slots = TimeTable.objects.filter(subject__iexact=subject, day=weekday)
+        
+    for slot in slots:
+        if slot.start_time and slot.end_time:
+            # Create full datetimes for comparison
+            # Handle crossing midnight? Unlikely for classes, but safe to assume same day.
+            
+            start_dt = datetime.datetime.combine(date, slot.start_time)
+            end_dt = datetime.datetime.combine(date, slot.end_time)
+            
+            # Add buffers
+            window_start = start_dt - datetime.timedelta(minutes=45)
+            window_end = end_dt + datetime.timedelta(minutes=45)
+            
+            check_dt = datetime.datetime.combine(date, ref_time)
+            
+            if window_start <= check_dt <= window_end:
+                matched_slot = slot
+                break
+    
+    # Query for existing records for this student, subject, date
+    existing_records = AttendanceRecord.objects.filter(student=student, subject__iexact=subject, date=date)
+    
+    if matched_slot:
+        # If we found a slot, we want ANY record that corresponds to this slot.
+        # i.e., any record whose 'time' is also within this slot's window.
+        
+        start_dt = datetime.datetime.combine(date, matched_slot.start_time)
+        end_dt = datetime.datetime.combine(date, matched_slot.end_time)
+        window_start = start_dt - datetime.timedelta(minutes=45)
+        window_end = end_dt + datetime.timedelta(minutes=45)
+        
+        for record in existing_records:
+            # Check if record time is in window
+            record_dt = datetime.datetime.combine(record.date, record.time)
+            if window_start <= record_dt <= window_end:
+                return record
+                
+    else:
+        # No slot found (e.g. extra class, different time, or no schedule).
+        # Fallback to pure time window (e.g. +/- 60 mins from ref_time)
+        # Check against ref_time
+        
+        check_dt = datetime.datetime.combine(date, ref_time)
+        window_start = check_dt - datetime.timedelta(minutes=60)
+        window_end = check_dt + datetime.timedelta(minutes=60)
+        
+        for record in existing_records:
+            record_dt = datetime.datetime.combine(record.date, record.time)
+            if window_start <= record_dt <= window_end:
+                return record
+                
+    return None
 
 def train_model():
     import face_recognition
