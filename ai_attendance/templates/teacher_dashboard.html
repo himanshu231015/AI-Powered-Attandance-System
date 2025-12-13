@@ -75,6 +75,7 @@
                                 <th>Year</th>
                                 <th>Section</th>
                                 <th>Day</th>
+                                <th>Time</th>
                                 <th class="text-center">Action</th>
                             </tr>
                         </thead>
@@ -84,20 +85,29 @@
                                 <td class="fw-bold text-primary">{{ item.subject }}</td>
                                 <td>{{ item.year }}</td>
                                 <td>{{ item.section|default:"-" }}</td>
-                                <td><span class="badge bg-info text-dark">{{ item.get_day_display }}</span></td>
+                                <td>
+                                    <span class="badge bg-info text-dark">{{ item.get_day_display }}</span>
+                                </td>
+                                <td>
+                                    {% if item.start_time %}
+                                    {{ item.start_time|time:"H:i" }} - {{ item.end_time|time:"H:i" }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td class="text-center">
-                                    <div class="d-flex gap-2">
-                                        <a href="{% url 'live_attendance' %}?subject={{ item.subject }}&year={{ item.year }}{% if item.section %}&section={{ item.section }}{% endif %}"
-                                            class="btn btn-sm btn-outline-danger flex-fill">
-                                            <i class="fas fa-video me-1"></i> Live
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'live_attendance' %}?subject={{ item.subject }}&year={{ item.year }}&section={{ item.section|default:'' }}"
+                                            class="btn btn-outline-danger btn-sm">
+                                            <i class="fas fa-video me-1"></i>Live
                                         </a>
-                                        <a href="{% url 'upload_attendance' %}?subject={{ item.subject }}&year={{ item.year }}{% if item.section %}&section={{ item.section }}{% endif %}"
-                                            class="btn btn-sm btn-outline-success flex-fill">
-                                            <i class="fas fa-camera me-1"></i> Upload
+                                        <a href="{% url 'upload_attendance' %}?subject={{ item.subject }}&year={{ item.year }}&section={{ item.section|default:'' }}"
+                                            class="btn btn-outline-success btn-sm">
+                                            <i class="fas fa-file-upload me-1"></i>Upload
                                         </a>
-                                        <a href="{% url 'manual_attendance' %}?subject={{ item.subject }}&year={{ item.year }}{% if item.section %}&section={{ item.section }}{% endif %}"
-                                            class="btn btn-sm btn-outline-primary flex-fill">
-                                            <i class="fas fa-edit me-1"></i> Manual
+                                        <a href="{% url 'manual_attendance' %}?subject={{ item.subject }}&year={{ item.year }}&section={{ item.section|default:'' }}&start_time={{ item.start_time|time:'H:i' }}"
+                                            class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-edit me-1"></i>Manual
                                         </a>
                                     </div>
                                 </td>
@@ -108,7 +118,7 @@
                 </div>
                 {% else %}
                 <div class="alert alert-warning">
-                    No subjects assigned yet. Please contact the administrator.
+                    No classes scheduled for today.
                 </div>
                 {% endif %}
             </div>

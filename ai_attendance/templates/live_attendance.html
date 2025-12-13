@@ -81,6 +81,7 @@
     const CLASS_SUBJECT = "{{ subject|default:'' }}";
     const CLASS_YEAR = "{{ year|default:'' }}";
     const CLASS_SECTION = "{{ section|default:'' }}";
+    const CLASS_START_TIME = "{{ start_time|default:'' }}";
 
     // Load cameras
     async function getCameras() {
@@ -197,7 +198,8 @@
                     image: imageData,
                     subject: CLASS_SUBJECT,
                     year: CLASS_YEAR,
-                    section: CLASS_SECTION
+                    section: CLASS_SECTION,
+                    start_time: CLASS_START_TIME
                 })
             });
 

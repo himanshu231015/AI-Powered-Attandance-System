@@ -127,8 +127,12 @@ def upload_attendance(request):
                     student = Student.objects.get(roll_number=roll_number)
                     
                     # Verify student belongs to this year/section
-                    if year and student.year != year:
+                    if year and str(student.year) != str(year):
                         pred['status'] = f"Wrong Year ({student.year})"
+                        final_predictions.append(pred)
+                        continue
+                    if section and str(student.section).lower() != str(section).lower():
+                        pred['status'] = f"Wrong Section ({student.section})"
                         final_predictions.append(pred)
                         continue
                         
@@ -139,11 +143,24 @@ def upload_attendance(request):
                     can_mark = True
                     
                     if subject:
-                         existing_record = AttendanceRecord.objects.filter(student=student, date=today, subject=subject).first()
+                         # Time-based lookup for existing record (60 mins window)
+                         cutoff_time = timezone.now() - datetime.timedelta(minutes=60)
+                         records = AttendanceRecord.objects.filter(student=student, date=today, subject=subject).order_by('-time')
+                         existing_record = None
+                         for record in records:
+                             dt_naive = datetime.datetime.combine(record.date, record.time)
+                             if timezone.is_naive(dt_naive):
+                                 dt_aware = timezone.make_aware(dt_naive, timezone.get_current_timezone())
+                             else:
+                                 dt_aware = dt_naive
+                             if dt_aware > cutoff_time:
+                                 existing_record = record
+                                 break
+                         
                          if existing_record:
                              if existing_record.status == 'Absent':
                                  existing_record.status = 'Present'
-                                 existing_record.time = timezone.now().time()
+                                 # existing_record.time = timezone.now().time() # Don't update time, keep original slot time
                                  existing_record.save()
                                  status_text = f"Marked Present (Was Absent) - ({subject})"
                                  marked_count += 1
@@ -193,8 +210,21 @@ def upload_attendance(request):
             
             for student in class_students:
                 if student.roll_number not in present_roll_numbers:
-                    # Check if record exists
-                    if not AttendanceRecord.objects.filter(student=student, date=today, subject=subject).exists():
+                    # Check if recent record exists
+                    recent_exists = False
+                    cutoff_time = timezone.now() - datetime.timedelta(minutes=60)
+                    recs = AttendanceRecord.objects.filter(student=student, date=today, subject=subject)
+                    for r in recs:
+                        dt_n = datetime.datetime.combine(r.date, r.time)
+                        if timezone.is_naive(dt_n):
+                            dt_a = timezone.make_aware(dt_n, timezone.get_current_timezone())
+                        else:
+                            dt_a = dt_n
+                        if dt_a > cutoff_time:
+                            recent_exists = True
+                            break
+                            
+                    if not recent_exists:
                          AttendanceRecord.objects.create(student=student, subject=subject, status='Absent')
                          absent_count += 1
                 
@@ -241,27 +271,57 @@ def manual_attendance(request):
         count_present = 0
         count_absent = 0
         
+        time_str = request.POST.get('time')
         current_time = datetime.datetime.now().time()
+        
+        if time_str:
+            try:
+                current_time = datetime.datetime.strptime(time_str, '%H:%M').time()
+            except ValueError:
+                pass # Fallback to now
         
         for student in students:
             is_present = str(student.id) in present_student_ids
             status = 'Present' if is_present else 'Absent'
             
-            # Explicitly check for existing record to avoid IntegrityError on race/auto_now issues
-            record = AttendanceRecord.objects.filter(
-                student=student,
-                date=date_obj,
-                subject=subject
-            ).first()
+            # Use specific time for lookup if provided, effectively disabling "cooldown" merging for different times
+            # But if updating same slot, we should find it.
+            # Logic: If record exists for this student + date + subject, check if time matches closely OR if it was just created (auto-now behavior prev).
+            # With explicit time, we can be more strict. Let's look for record with same date and approx same time (e.g. within 5 mins) to allowing editing.
+            
+            cutoff_start = datetime.datetime.combine(date_obj, current_time) - datetime.timedelta(minutes=10)
+            cutoff_end = datetime.datetime.combine(date_obj, current_time) + datetime.timedelta(minutes=10)
+            
+            # Naive/Aware handling
+            if timezone.is_aware(timezone.now()):
+                 cutoff_start = timezone.make_aware(cutoff_start)
+                 cutoff_end = timezone.make_aware(cutoff_end)
+                 
+            possible_records = AttendanceRecord.objects.filter(student=student, date=date_obj, subject=subject).order_by('-time')
+            record = None
+            
+            for r in possible_records:
+                dt_naive = datetime.datetime.combine(r.date, r.time)
+                if timezone.is_aware(timezone.now()):
+                    dt_check = timezone.make_aware(dt_naive, timezone.get_current_timezone())
+                else:
+                    dt_check = dt_naive
+                    
+                # Loose check around the target time to allow editing
+                # If naive comparison:
+                if cutoff_start <= dt_check <= cutoff_end:
+                    record = r
+                    break
 
             if record:
                 # Update existing
                 record.status = status
-                # record.time = datetime.datetime.now().time() # Optional: update time? Keep original time maybe better?
-                # Let's update time to show "last modified" or "marked at"
-                record.time = current_time
+                # Update time if beneficial, or keep original?
+                # If we are "correcting" a record, we might keep time. If we are explicitly setting time, we set it.
+                if time_str:
+                     record.time = current_time
                 record.save()
-                create_notification(student, f"Attendance updated: {status} for {subject} on {date_obj}")
+                create_notification(student, f"Attendance updated: {status} for {subject} on {date_obj} at {current_time.strftime('%H:%M')}")
             else:
                 # Create new
                 AttendanceRecord.objects.create(
@@ -269,8 +329,9 @@ def manual_attendance(request):
                     date=date_obj,
                     subject=subject,
                     status=status,
+                    time=current_time
                 )
-                create_notification(student, f"Attendance marked: {status} for {subject} on {date_obj}")
+                create_notification(student, f"Attendance marked: {status} for {subject} on {date_obj} at {current_time.strftime('%H:%M')}")
             
             if is_present:
                 count_present += 1
@@ -280,12 +341,61 @@ def manual_attendance(request):
         messages.success(request, f"Attendance marked for {subject}: {count_present} Present, {count_absent} Absent.")
         return redirect('teacher_dashboard')
 
+
+    today = datetime.date.today().strftime('%Y-%m-%d')
+    default_time = request.GET.get('start_time', datetime.datetime.now().strftime('%H:%M'))
+    
+    # Check if attendance exists for this slot
+    present_student_ids = []
+    attendance_marked = False
+    
+    if default_time:
+         try:
+            query_time = datetime.datetime.strptime(default_time, '%H:%M').time()
+            cutoff_start = datetime.datetime.combine(datetime.date.today(), query_time) - datetime.timedelta(minutes=20)
+            cutoff_end = datetime.datetime.combine(datetime.date.today(), query_time) + datetime.timedelta(minutes=20)
+            
+            if timezone.is_aware(timezone.now()):
+                 cutoff_start = timezone.make_aware(cutoff_start)
+                 cutoff_end = timezone.make_aware(cutoff_end)
+            
+            existing_records = AttendanceRecord.objects.filter(
+                subject=subject, 
+                date=datetime.date.today()
+            )
+            
+            # Filter in python or complex query for time range
+            # Since we removed auto_now_add, we trust the time field more.
+            # Let's find records in the window.
+            matched_records = []
+            for r in existing_records:
+                dt_naive = datetime.datetime.combine(r.date, r.time)
+                if timezone.is_aware(timezone.now()):
+                    dt_check = timezone.make_aware(dt_naive, timezone.get_current_timezone())
+                else:
+                    dt_check = dt_naive
+                
+                if cutoff_start <= dt_check <= cutoff_end:
+                    matched_records.append(r)
+            
+            if matched_records:
+                attendance_marked = True
+                for r in matched_records:
+                    if r.status == 'Present':
+                        present_student_ids.append(r.student.id)
+
+         except ValueError:
+             pass
+
     return render(request, 'manual_attendance.html', {
         'students': students, 
         'subject': subject, 
         'year': year, 
         'section': section,
-        'today': datetime.date.today().strftime('%Y-%m-%d')
+        'today': today,
+        'default_time': default_time,
+        'attendance_marked': attendance_marked,
+        'present_student_ids': present_student_ids,
     })
 
 def live_attendance(request):
@@ -369,6 +479,21 @@ def process_live_frame(request):
             results = []
             
             # Deduplication for this frame
+            req_time_str = data.get('start_time')
+            
+            # Default to now if not provided
+            current_time = datetime.datetime.now().time()
+            if req_time_str:
+                try:
+                    current_time = datetime.datetime.strptime(req_time_str, '%H:%M').time()
+                except ValueError:
+                    pass
+
+            # ... decode image ... (omitted in tool, matching context below)
+
+            # Mark attendance logic
+            
+            # Deduplication for this frame
             processed_rolls_in_frame = set()
             
             for pred in predictions:
@@ -391,32 +516,56 @@ def process_live_frame(request):
                             if req_section:
                                 if str(student.section).lower() != str(req_section).lower():
                                     continue # Skip wrong section
-                            # Cooldown Logic: Check last attendance for this student
-                            last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
-                            
+                                    
                             can_mark = True
-                            if last_attendance:
-                                from django.utils import timezone
-                                import datetime
-                                # Combine date and time to get full datetime
-                                last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
-                                # Make it aware (UTC)
-                                last_datetime = timezone.make_aware(last_datetime_naive, datetime.timezone.utc)
-                                
-                                time_diff = timezone.now() - last_datetime
-                                
-                                # Check if less than 1 hour (3600 seconds)
-                                if time_diff.total_seconds() < 3600:
-                                    can_mark = False
-                                    status_msg = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
+                            
+                            if req_subject:
+                                 # Explicit Subject Mode (Dashboard)
+                                 # Use Window Logic (+/- 20 mins around current_time)
+                                 # This allows marking 11:10 and 12:00 separately.
+                                 
+                                 cutoff_start = datetime.datetime.combine(datetime.date.today(), current_time) - datetime.timedelta(minutes=20)
+                                 cutoff_end = datetime.datetime.combine(datetime.date.today(), current_time) + datetime.timedelta(minutes=20)
+                                 
+                                 if timezone.is_aware(timezone.now()):
+                                     cutoff_start = timezone.make_aware(cutoff_start)
+                                     cutoff_end = timezone.make_aware(cutoff_end)
+                                     
+                                 existing_records = AttendanceRecord.objects.filter(student=student, date=datetime.date.today(), subject=current_subject)
+                                 
+                                 for r in existing_records:
+                                     dt_naive = datetime.datetime.combine(r.date, r.time)
+                                     if timezone.is_aware(timezone.now()):
+                                         dt_check = timezone.make_aware(dt_naive, timezone.get_current_timezone())
+                                     else:
+                                         dt_check = dt_naive
+                                         
+                                     if cutoff_start <= dt_check <= cutoff_end:
+                                         can_mark = False
+                                         status_msg = f"Already Marked ({current_time.strftime('%H:%M')})"
+                                         break
+                            else:
+                                # Fallback / Timetable Mode (Auto-detect)
+                                # Use Global Cooldown (1 hour) to prev spam
+                                last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
+                                if last_attendance:
+                                    last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
+                                    if timezone.is_aware(timezone.now()):
+                                         last_datetime = timezone.make_aware(last_datetime_naive, datetime.timezone.utc)
+                                    else:
+                                         last_datetime = last_datetime_naive
+                                    
+                                    time_diff = timezone.now() - last_datetime
+                                    if time_diff.total_seconds() < 3600:
+                                        can_mark = False
+                                        status_msg = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
                             
                             if can_mark:
                                 try:
-                                    AttendanceRecord.objects.create(student=student, subject=current_subject)
+                                    AttendanceRecord.objects.create(student=student, subject=current_subject, time=current_time)
                                     create_notification(student, f"Marked Present for {current_subject} via Face ID")
                                     status_msg = f"Marked Present ({current_subject})"
                                 except Exception as e:
-                                     # Likely IntegrityError
                                      status_msg = f"Already Marked Today ({current_subject})"
                                     
                         except Student.DoesNotExist:
@@ -467,6 +616,9 @@ def add_student(request):
     if request.method == 'POST':
         name = request.POST.get('name')
         roll_number = request.POST.get('roll_number')
+        department = request.POST.get('department')
+        year = request.POST.get('year')
+        section = request.POST.get('section')
         images = request.FILES.getlist('images')
         
         if Student.objects.filter(roll_number=roll_number).exists():
@@ -476,14 +628,27 @@ def add_student(request):
         # Create User for student
         try:
             user = User.objects.create_user(username=roll_number, password=roll_number)
-            student = Student.objects.create(name=name, roll_number=roll_number, user=user, plain_password=roll_number)
+            student = Student.objects.create(
+                name=name, 
+                roll_number=roll_number, 
+                user=user, 
+                plain_password=roll_number,
+                department=department,
+                year=year,
+                section=section
+            )
         except Exception as e:
             messages.error(request, f"Error creating user: {e}")
             return redirect('add_student')
         
-        # Create folder
+        # Create folder with hierarchy: Branch/Year/Section/Roll_Name
         folder_name = f"{roll_number}_{name}"
-        save_dir = os.path.join(settings.DATASET_DIR, folder_name)
+        # Sanitize inputs to prevent path traversal or bad characters
+        safe_dept = "".join([c for c in department if c.isalnum() or c in (' ', '_', '-')]).strip()
+        safe_year = "".join([c for c in str(year) if c.isalnum()]).strip()
+        safe_section = "".join([c for c in str(section) if c.isalnum()]).strip()
+        
+        save_dir = os.path.join(settings.DATASET_DIR, safe_dept, safe_year, safe_section, folder_name)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
             
@@ -862,7 +1027,8 @@ def student_dashboard(request):
 @login_required
 def teacher_dashboard(request):
     # Fetch subjects assigned to this teacher
-    assigned_classes = TeacherSubject.objects.filter(teacher=request.user)
+    today_weekday = datetime.datetime.now().weekday()
+    assigned_classes = TeacherSubject.objects.filter(teacher=request.user, day=today_weekday)
     
     # Filter by Year
     year_query = request.GET.get('year')
@@ -922,6 +1088,12 @@ def assign_teacher_subject(request):
         year = request.POST.get('year')
         section = request.POST.get('section')
         day = request.POST.get('day')
+        start_time = request.POST.get('start_time')
+        end_time = request.POST.get('end_time')
+        
+        # Convert empty strings to None
+        if not start_time: start_time = None
+        if not end_time: end_time = None
         
         try:
             teacher = User.objects.get(id=teacher_id)
@@ -930,7 +1102,9 @@ def assign_teacher_subject(request):
                 subject=subject,
                 year=year,
                 section=section,
-                day=day
+                day=day,
+                start_time=start_time,
+                end_time=end_time
             )
             messages.success(request, f"Assigned {subject} to {teacher.username} successfully.")
             return redirect('manage_teacher_subjects')
@@ -939,6 +1113,49 @@ def assign_teacher_subject(request):
             
     days = TeacherSubject.DAYS_OF_WEEK
     return render(request, 'assign_teacher_subject.html', {'teachers': teachers, 'days': days})
+
+@user_passes_test(lambda u: u.is_superuser)
+def edit_teacher_subject(request, subject_id):
+    subject_obj = get_object_or_404(TeacherSubject, id=subject_id)
+    teachers = User.objects.filter(is_staff=True, is_superuser=False)
+    
+    if request.method == 'POST':
+        try:
+            teacher_id = request.POST.get('teacher')
+            subject = request.POST.get('subject')
+            year = request.POST.get('year')
+            section = request.POST.get('section')
+            day = request.POST.get('day')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            
+            # Convert empty strings to None
+            if not start_time: start_time = None
+            if not end_time: end_time = None
+            
+            teacher = User.objects.get(id=teacher_id)
+            
+            # Update fields
+            subject_obj.teacher = teacher
+            subject_obj.subject = subject
+            subject_obj.year = year
+            subject_obj.section = section
+            subject_obj.day = day
+            subject_obj.start_time = start_time
+            subject_obj.end_time = end_time
+            subject_obj.save()
+            
+            messages.success(request, f"Updated assignment for {subject} successfully.")
+            return redirect('manage_teacher_subjects')
+        except Exception as e:
+            messages.error(request, f"Error updating assignment: {e}")
+            
+    days = TeacherSubject.DAYS_OF_WEEK
+    return render(request, 'edit_teacher_subject.html', {
+        'submission': subject_obj,
+        'teachers': teachers, 
+        'days': days
+    })
 
 @user_passes_test(lambda u: u.is_superuser)
 def delete_teacher_subject(request, subject_id):

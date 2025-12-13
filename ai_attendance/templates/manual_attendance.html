@@ -22,15 +22,26 @@
                     <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
                 </div>
                 {% else %}
+                {% if attendance_marked %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> Attendance for this time slot has already been marked. You
+                    are viewing the current status.
+                </div>
+                {% endif %}
                 <form method="post">
                     {% csrf_token %}
 
                     <div class="row mb-4 align-items-end">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="date" class="form-label fw-bold">Date</label>
                             <input type="date" class="form-control" id="date" name="date" value="{{ today }}" required>
                         </div>
-                        <div class="col-md-8 text-end">
+                        <div class="col-md-3">
+                            <label for="time" class="form-label fw-bold">Time</label>
+                            <input type="time" class="form-control" id="time" name="time" value="{{ default_time }}"
+                                required>
+                        </div>
+                        <div class="col-md-6 text-end">
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="selectAll">
                                 <label class="form-check-label fw-bold" for="selectAll">Select All</label>
@@ -58,7 +69,11 @@
                                         <div class="form-check d-inline-block">
                                             <input class="form-check-input student-checkbox" type="checkbox"
                                                 name="student_ids" value="{{ student.id }}" id="stu_{{ student.id }}"
-                                                checked>
+                                                {% if attendance_marked %}
+                                                    {% if student.id in present_student_ids %}checked{% endif %}
+                                                {% else %}
+                                                    checked
+                                                {% endif %}>
                                             <label class="form-check-label" for="stu_{{ student.id }}">
                                                 Present
                                             </label>

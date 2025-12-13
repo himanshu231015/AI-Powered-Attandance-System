@@ -5,10 +5,10 @@
     <div class="col-md-8">
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-book-reader me-2"></i>Assign Subject to Teacher</h4>
+                <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Subject Assignment</h4>
             </div>
             <div class="card-body p-4">
-                <form method="post">
+                <form method="post" action="{% url 'edit_teacher_subject' submission.id %}">
                     {% csrf_token %}
 
                     <div class="mb-3">
@@ -16,8 +16,9 @@
                         <select class="form-select" id="teacher" name="teacher" required>
                             <option value="">Select a Teacher...</option>
                             {% for teacher in teachers %}
-                            <option value="{{ teacher.id }}">{{ teacher.get_full_name|default:teacher.username }} ({{
-                                teacher.email }})</option>
+                            <option value="{{ teacher.id }}" {% if teacher.id == submission.teacher.id %}selected{% endif %}>
+                                {{ teacher.get_full_name|default:teacher.username }} ({{ teacher.email }})
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -26,13 +27,15 @@
                         <div class="col-md-6 mb-3">
                             <label for="subject" class="form-label">Subject Name</label>
                             <input type="text" class="form-control" id="subject" name="subject"
-                                placeholder="e.g. Mathematics" required>
+                                value="{{ submission.subject }}" placeholder="e.g. Mathematics" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="day" class="form-label">Day</label>
                             <select class="form-select" id="day" name="day">
                                 {% for day_val, day_name in days %}
-                                <option value="{{ day_val }}">{{ day_name }}</option>
+                                <option value="{{ day_val }}" {% if day_val == submission.day %}selected{% endif %}>
+                                    {{ day_name }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -41,28 +44,32 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="year" class="form-label">Year</label>
-                            <input type="text" class="form-control" id="year" name="year" placeholder="e.g. 1" required>
+                            <input type="text" class="form-control" id="year" name="year" value="{{ submission.year }}"
+                                placeholder="e.g. 1" required>
                             <div class="form-text">Target student year (e.g. 1, 2, 3, 4)</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="section" class="form-label">Section (Optional)</label>
-                            <input type="text" class="form-control" id="section" name="section" placeholder="e.g. A">
+                            <input type="text" class="form-control" id="section" name="section"
+                                value="{{ submission.section|default:'' }}" placeholder="e.g. A">
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="start_time" class="form-label">Start Time</label>
-                            <input type="time" class="form-control" id="start_time" name="start_time">
+                            <input type="time" class="form-control" id="start_time" name="start_time"
+                                value="{{ submission.start_time|time:'H:i'|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="end_time" class="form-label">End Time</label>
-                            <input type="time" class="form-control" id="end_time" name="end_time">
+                            <input type="time" class="form-control" id="end_time" name="end_time"
+                                value="{{ submission.end_time|time:'H:i'|default:'' }}">
                         </div>
                     </div>
 
                     <div class="d-grid gap-2 mt-4">
-                        <button type="submit" class="btn btn-success btn-lg">Assign Subject</button>
+                        <button type="submit" class="btn btn-warning btn-lg">Update Assignment</button>
                         <a href="{% url 'manage_teacher_subjects' %}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>

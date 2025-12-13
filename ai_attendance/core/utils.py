@@ -32,45 +32,63 @@ def train_model():
     active_files = set()
     new_encodings_count = 0
         
-    for person_name in os.listdir(dataset_dir):
-        person_dir = os.path.join(dataset_dir, person_name)
-        if not os.path.isdir(person_dir):
-            continue
-            
-        # Extract roll number
-        try:
-            roll_number = person_name.split('_')[0]
-        except IndexError:
-            continue 
-            
-        for image_name in os.listdir(person_dir):
-            image_path = os.path.join(person_dir, image_name)
-            # Use relative path as key to be safe against directory moves if root changes, 
-            # though absolute is easier. Let's use relative to dataset_dir.
-            rel_path = os.path.join(person_name, image_name)
-            
-            # Skip non-image files
-            if not image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+    for root, dirs, files in os.walk(dataset_dir):
+        for person_name in dirs:
+            # Check if this directory name looks like a student folder (Roll_Name)
+            if '_' not in person_name:
+                continue
+                
+            try:
+                roll_number = person_name.split('_')[0]
+                # Basic validation that roll_number is likely valid (alphanumeric)
+                if not roll_number.isalnum():
+                     continue
+            except IndexError:
                 continue
             
-            active_files.add(rel_path)
+            person_dir = os.path.join(root, person_name)
+            
+            # Check if this folder contains images (to ensure it's a leaf/student folder)
+            has_images = False
+            for f in os.listdir(person_dir):
+                if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    has_images = True
+                    break
+            
+            if not has_images:
+                continue
+            
+            # It's a valid student folder
+            print(f"Processing student folder: {person_name}") 
+            
+            for image_name in os.listdir(person_dir):
+                image_path = os.path.join(person_dir, image_name)
+                # Use relative path as key to be safe against directory moves if root changes, 
+                # though absolute is easier. Let's use relative to dataset_dir.
+                rel_path = os.path.relpath(image_path, dataset_dir)
                 
-            if rel_path in encodings_cache:
-                X.append(encodings_cache[rel_path])
-                y.append(roll_number)
-            else:
-                try:
-                    image = face_recognition.load_image_file(image_path)
-                    face_encodings = face_recognition.face_encodings(image)
+                # Skip non-image files
+                if not image_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    continue
+                
+                active_files.add(rel_path)
                     
-                    if len(face_encodings) > 0:
-                        encoding = face_encodings[0]
-                        X.append(encoding)
-                        y.append(roll_number)
-                        encodings_cache[rel_path] = encoding
-                        new_encodings_count += 1
-                except Exception as e:
-                    print(f"Error processing {image_path}: {e}")
+                if rel_path in encodings_cache:
+                    X.append(encodings_cache[rel_path])
+                    y.append(roll_number)
+                else:
+                    try:
+                        image = face_recognition.load_image_file(image_path)
+                        face_encodings = face_recognition.face_encodings(image)
+                        
+                        if len(face_encodings) > 0:
+                            encoding = face_encodings[0]
+                            X.append(encoding)
+                            y.append(roll_number)
+                            encodings_cache[rel_path] = encoding
+                            new_encodings_count += 1
+                    except Exception as e:
+                        print(f"Error processing {image_path}: {e}")
     
     # Check if we have data
     if not X:

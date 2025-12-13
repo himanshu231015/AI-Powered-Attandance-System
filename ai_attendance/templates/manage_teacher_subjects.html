@@ -23,6 +23,7 @@
                         <th>Year</th>
                         <th>Section</th>
                         <th>Day</th>
+                        <th>Class Time</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -47,6 +48,17 @@
                         <td>{{ item.section|default:"-" }}</td>
                         <td><span class="badge bg-secondary">{{ item.get_day_display }}</span></td>
                         <td>
+                            {% if item.start_time %}
+                            {{ item.start_time|time:"H:i" }} - {{ item.end_time|default:item.start_time|time:"H:i" }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'edit_teacher_subject' item.id %}"
+                                class="btn btn-sm btn-outline-warning me-1" title="Edit Assignment">
+                                <i class="fas fa-edit"></i>
+                            </a>
                             <form action="{% url 'delete_teacher_subject' item.id %}" method="post"
                                 onsubmit="return confirm('Are you sure you want to remove this assignment?');"
                                 style="display:inline;">

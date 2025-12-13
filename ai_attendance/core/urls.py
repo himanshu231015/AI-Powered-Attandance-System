@@ -30,5 +30,6 @@ urlpatterns = [
     path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
     path('manage_teacher_subjects/', views.manage_teacher_subjects, name='manage_teacher_subjects'),
     path('assign_teacher_subject/', views.assign_teacher_subject, name='assign_teacher_subject'),
+    path('edit_teacher_subject/<int:subject_id>/', views.edit_teacher_subject, name='edit_teacher_subject'),
     path('delete_teacher_subject/<int:subject_id>/', views.delete_teacher_subject, name='delete_teacher_subject'),
 ]
