@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <div class="row">
     <!-- Sidebar Navigation -->
     <div class="col-md-3 mb-4">
@@ -193,6 +194,16 @@
             </div>
         </div>
 
+        <!-- Section: Attendance Projection Graph -->
+        <div class="card shadow mb-4" id="attendance-graph-section" style="display: none;">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Attendance Projection</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="attendanceChart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>
+
         <!-- Section: Subject Attendance -->
         <div id="subject" class="card shadow mb-4 content-section" style="display: none;">
             <div class="card-header bg-success text-white">
@@ -286,6 +297,12 @@
                         target.style.display = sectionId === 'overall' ? 'flex' : 'block'; // 'flex' for the row
                     }
 
+                    // Handle Graph visibility matching 'overall'
+                    const graphSection = document.getElementById('attendance-graph-section');
+                    if (graphSection) {
+                        graphSection.style.display = sectionId === 'overall' ? 'block' : 'none';
+                    }
+
                     // Update active link state
                     links.forEach(link => {
                         link.classList.remove('active', 'bg-primary', 'text-white');
@@ -308,6 +325,78 @@
 
                 // Show home by default
                 showSection('home-section');
+
+                // Initialize Chart.js
+                const ctx = document.getElementById('attendanceChart').getContext('2d');
+
+                // DATA FROM DJANGO
+                const currentData = {{ current_attendance_count }};
+
+            // Wait, the user asked for 75% criteria. The cards show:
+            // Overall: {{ overall_percentage }}
+            // Next Week: {{ prediction_week }}
+            // Next Month: {{ prediction_month }}
+            // So I should graph these percentages.
+
+            const overallPct = {{ overall_percentage }};
+            const nextWeekPct = {{ prediction_week }};
+            const nextMonthPct = {{ prediction_month }};
+
+            const dataValues = [overallPct, nextWeekPct, nextMonthPct];
+
+            // Color Logic: Red if < 75, Green if >= 75
+            const backgroundColors = dataValues.map(value => value < 75 ? 'rgba(220, 53, 69, 0.7)' : 'rgba(25, 135, 84, 0.7)');
+            const borderColors = dataValues.map(value => value < 75 ? 'rgba(220, 53, 69, 1)' : 'rgba(25, 135, 84, 1)');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Current Attendance', 'Next Week Projection', 'Next Month Projection'],
+                    datasets: [{
+                        label: 'Attendance Percentage',
+                        data: dataValues,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    },
+                    {
+                        label: '75% Criteria',
+                        data: [75, 75, 75],
+                        type: 'line',
+                        borderColor: '#ffc107', // Yellow/Warning color for the line
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false,
+                        order: 1 // Draw on top
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function (value) {
+                                    return value + "%"
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                }
+            });
+
+            // Also make sure graph section shows when Overall is clicked
+            // Modify showSection or add specific handling
+            const existingShowSection = showSection;
+                // Wait, I defined showSection inside. I can just modify the showSection function logic above in a separate edit 
+                // OR I can just hook into the existing click logic if I can find it. 
+                // Actually, I should update the showSection function in the template to also toggle the graph.
             });
         </script>
 
