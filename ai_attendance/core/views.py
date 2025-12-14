@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import user_passes_test
+from django.db import transaction
 import os
 import datetime
 import json
@@ -269,39 +270,45 @@ def manual_attendance(request):
             except ValueError:
                 pass # Fallback to now
         
-        for student in students:
-            is_present = str(student.id) in present_student_ids
-            status = 'Present' if is_present else 'Absent'
+        with transaction.atomic():
+            for student in students:
+                # Lock the student row to prevent race conditions (double submission)
+                # We simply fetch it with lock; we can continue using the loop variable 'student' or the locked instance.
+                # Since 'student' variable is already populated, we just hold the lock.
+                Student.objects.select_for_update().get(id=student.id)
+                
+                is_present = str(student.id) in present_student_ids
+                status = 'Present' if is_present else 'Absent'
             
-            # Unified lookup
-            # Use provided time or current time for reference
-            ref_time = current_time
-            record = get_existing_attendance_record(student, subject, date_obj, ref_time)
+                # Unified lookup
+                # Use provided time or current time for reference
+                ref_time = current_time
+                record = get_existing_attendance_record(student, subject, date_obj, ref_time)
 
-            if record:
-                # Update existing
-                record.status = status
-                # Update time if beneficial, or keep original?
-                # If we are "correcting" a record, we might keep time. If we are explicitly setting time, we set it.
-                if time_str:
-                     record.time = current_time
-                record.save()
-                create_notification(student, f"Attendance updated: {status} for {subject} on {date_obj} at {current_time.strftime('%H:%M')}")
-            else:
-                # Create new
-                AttendanceRecord.objects.create(
-                    student=student,
-                    date=date_obj,
-                    subject=subject,
-                    status=status,
-                    time=current_time
-                )
-                create_notification(student, f"Attendance marked: {status} for {subject} on {date_obj} at {current_time.strftime('%H:%M')}")
+                if record:
+                    # Update existing
+                    record.status = status
+                    # Update time if beneficial, or keep original?
+                    # If we are "correcting" a record, we might keep time. If we are explicitly setting time, we set it.
+                    if time_str:
+                         record.time = current_time
+                    record.save()
+                    create_notification(student, f"Attendance updated: {status} for {subject} on {date_obj} at {current_time.strftime('%H:%M')}")
+                else:
+                    # Create new
+                    AttendanceRecord.objects.create(
+                        student=student,
+                        date=date_obj,
+                        subject=subject,
+                        status=status,
+                        time=current_time
+                    )
+                    create_notification(student, f"Attendance marked: {status} for {subject} on {date_obj} at {current_time.strftime('%H:%M')}")
             
-            if is_present:
-                count_present += 1
-            else:
-                count_absent += 1
+                if is_present:
+                    count_present += 1
+                else:
+                    count_absent += 1
             
         messages.success(request, f"Attendance marked for {subject}: {count_present} Present, {count_absent} Absent.")
         return redirect('teacher_dashboard')
@@ -472,49 +479,51 @@ def process_live_frame(request):
                     else:
                         processed_rolls_in_frame.add(roll_number)
                         try:
-                            student = Student.objects.get(roll_number=roll_number)
-                            
-                            # Validate logic if year/section provided
-                            if req_year:
-                                if str(student.year) != str(req_year):
-                                    continue # Skip wrong year
-                            if req_section:
-                                if str(student.section).lower() != str(req_section).lower():
-                                    continue # Skip wrong section
-                                    
-                            can_mark = True
-                            
-                            if req_subject:
-                                 # Explicit Subject Mode (Dashboard)
-                                 # Use unified helper
-                                 existing_record = get_existing_attendance_record(student, req_subject, datetime.date.today(), current_time)
-                                 
-                                 if existing_record:
-                                     can_mark = False
-                                     status_msg = f"Already Marked ({existing_record.time.strftime('%H:%M')})"
-                            else:
-                                # Fallback / Timetable Mode (Auto-detect)
-                                # Use Global Cooldown (1 hour) to prev spam
-                                last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
-                                if last_attendance:
-                                    last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
-                                    if timezone.is_aware(timezone.now()):
-                                         last_datetime = timezone.make_aware(last_datetime_naive, datetime.timezone.utc)
-                                    else:
-                                         last_datetime = last_datetime_naive
-                                    
-                                    time_diff = timezone.now() - last_datetime
-                                    if time_diff.total_seconds() < 3600:
-                                        can_mark = False
-                                        status_msg = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
-                            
-                            if can_mark:
-                                try:
-                                    AttendanceRecord.objects.create(student=student, subject=current_subject, time=current_time)
-                                    create_notification(student, f"Marked Present for {current_subject} via Face ID")
-                                    status_msg = f"Marked Present ({current_subject})"
-                                except Exception as e:
-                                     status_msg = f"Already Marked Today ({current_subject})"
+                            # ATOMIC BLOCK START: Lock student to prevent race condition duplicates
+                            with transaction.atomic():
+                                student = Student.objects.select_for_update().get(roll_number=roll_number)
+                                
+                                # Validate logic if year/section provided
+                                if req_year:
+                                    if str(student.year) != str(req_year):
+                                        continue # Skip wrong year
+                                if req_section:
+                                    if str(student.section).lower() != str(req_section).lower():
+                                        continue # Skip wrong section
+                                        
+                                can_mark = True
+                                
+                                if req_subject:
+                                     # Explicit Subject Mode (Dashboard)
+                                     # Use unified helper
+                                     existing_record = get_existing_attendance_record(student, req_subject, datetime.date.today(), current_time)
+                                     
+                                     if existing_record:
+                                         can_mark = False
+                                         status_msg = f"Already Marked ({existing_record.time.strftime('%H:%M')})"
+                                else:
+                                    # Fallback / Timetable Mode (Auto-detect)
+                                    # Use Global Cooldown (1 hour) to prev spam
+                                    last_attendance = AttendanceRecord.objects.filter(student=student).order_by('-date', '-time').first()
+                                    if last_attendance:
+                                        last_datetime_naive = datetime.datetime.combine(last_attendance.date, last_attendance.time)
+                                        if timezone.is_aware(timezone.now()):
+                                             last_datetime = timezone.make_aware(last_datetime_naive, datetime.timezone.utc)
+                                        else:
+                                             last_datetime = last_datetime_naive
+                                        
+                                        time_diff = timezone.now() - last_datetime
+                                        if time_diff.total_seconds() < 3600:
+                                            can_mark = False
+                                            status_msg = f"Already Marked ({int(time_diff.total_seconds() // 60)}m ago)"
+                                
+                                if can_mark:
+                                    try:
+                                        AttendanceRecord.objects.create(student=student, subject=current_subject, time=current_time)
+                                        create_notification(student, f"Marked Present for {current_subject} via Face ID")
+                                        status_msg = f"Marked Present ({current_subject})"
+                                    except Exception as e:
+                                         status_msg = f"Already Marked Today ({current_subject})"
                                     
                         except Student.DoesNotExist:
                             status_msg = "Student Not Found"
@@ -1011,8 +1020,19 @@ def teacher_dashboard(request):
     # Recent Attendance for these classes/students
     recent_attendance = AttendanceRecord.objects.filter(student__id__in=relevant_students_ids).order_by('-date', '-time')[:5]
 
+    # Annotate classes with active status (is_active) based on current time
+    current_time = datetime.datetime.now().time()
+    display_classes = []
+    for cls in assigned_classes:
+        cls.is_active = False
+        if cls.start_time and cls.end_time:
+            # Check if current time is within class hours
+            if cls.start_time <= current_time <= cls.end_time:
+                cls.is_active = True
+        display_classes.append(cls)
+
     return render(request, 'teacher_dashboard.html', {
-        'assigned_classes': assigned_classes,
+        'assigned_classes': display_classes,
         'selected_year': year_query, 
         'selected_section': section_query,
         'total_classes_count': total_classes_count,
