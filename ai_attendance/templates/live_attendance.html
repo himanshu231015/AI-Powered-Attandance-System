@@ -28,6 +28,9 @@
                         <span class="visually-hidden">Processing...</span>
                     </div>
                 </div>
+                <div id="statusIndicator" class="position-absolute top-0 start-0 m-2 badge bg-secondary">
+                    Ready
+                </div>
             </div>
             <div class="card-footer d-flex justify-content-between">
                 <div>
@@ -35,8 +38,8 @@
                     <button id="stopBtn" class="btn btn-danger" disabled><i class="fas fa-stop me-2"></i>Stop</button>
                 </div>
                 <div class="form-check form-switch d-flex align-items-center">
-                    <input class="form-check-input me-2" type="checkbox" id="autoMode">
-                    <label class="form-check-label" for="autoMode">Auto-Scan (Every 3s)</label>
+                    <input class="form-check-input me-2" type="checkbox" id="autoMode" checked>
+                    <label class="form-check-label" for="autoMode">Auto-Scan (Active)</label>
                 </div>
                 <button id="scanBtn" class="btn btn-primary" disabled><i class="fas fa-camera me-2"></i>Scan
                     Now</button>
@@ -167,7 +170,7 @@
         if (autoInterval) clearInterval(autoInterval);
         autoInterval = setInterval(() => {
             if (!isProcessing) captureAndSend();
-        }, 3000); // 3 seconds
+        }, 1000); // 1 second
     }
 
     function stopAutoScan() {
@@ -189,7 +192,7 @@
         const imageData = captureCanvas.toDataURL('image/jpeg', 0.8);
 
         try {
-            const response = await fetch('/process_live_frame/', {
+            const response = await fetch('/core/process_live_frame/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -213,6 +216,8 @@
             }
         } catch (err) {
             console.error("Network error:", err);
+            document.getElementById('statusIndicator').textContent = "Network Error";
+            document.getElementById('statusIndicator').className = "position-absolute top-0 start-0 m-2 badge bg-danger";
         } finally {
             isProcessing = false;
             loadingSpinner.style.display = 'none';
@@ -220,6 +225,9 @@
     }
 
     function drawResults(results) {
+        document.getElementById('statusIndicator').textContent = `Detected: ${results.length}`;
+        document.getElementById('statusIndicator').className = results.length > 0 ? "position-absolute top-0 start-0 m-2 badge bg-success" : "position-absolute top-0 start-0 m-2 badge bg-warning";
+
         const ctx = overlayCanvas.getContext('2d');
         ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 

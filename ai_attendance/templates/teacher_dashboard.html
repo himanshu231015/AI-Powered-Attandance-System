@@ -3,7 +3,7 @@
 {% block content %}
 <div class="row">
     <div class="col-md-12">
-        <h2 class="mb-4">Teacher Dashboard</h2>
+        <h2 class="mb-4">Hello {{ user.first_name|default:user.username }}</h2>
 
         <div class="row mb-4">
             <div class="col-md-4">
@@ -63,7 +63,9 @@
 
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">My Assigned Classes</h4>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">My Assigned Classes</h4>
+                </div>
             </div>
             <div class="card-body">
                 {% if assigned_classes %}

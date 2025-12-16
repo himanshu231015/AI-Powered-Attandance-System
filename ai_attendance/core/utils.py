@@ -243,8 +243,8 @@ def identify_faces(image_path=None, image_content=None):
             gray = image
         
         # Lower scaleFactor for more detail, lowered minNeighbors for more sensitivity
-        # INCREASED minNeighbors to 12 to reduce ghost faces (false positives - very strict)
-        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=12, minSize=(60, 60))
+        # RELAXED minNeighbors to 5 (balanced) - 4 was too loose (ghosts), 12 too strict (misses)
+        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
         
         haar_face_locations = []
         for (x, y, w, h) in haar_faces_rects:
@@ -297,12 +297,14 @@ def identify_faces(image_path=None, image_content=None):
         if not is_duplicate:
             final_face_locations.append(h_loc)
             
-    print(f"Total unique faces found: {len(final_face_locations)}")
+    print(f"DEBUG: Total unique faces found: {len(final_face_locations)}")
     
     if len(final_face_locations) == 0:
+        print("DEBUG: No faces found.")
         return []
         
     faces_encodings = face_recognition.face_encodings(image, known_face_locations=final_face_locations)
+    print(f"DEBUG: Encodings generated: {len(faces_encodings)}")
     
     # If using Haar, sometimes faces are not clear enough for encodings to return valid data corresponding to locs?
     # face_encodings returns a list of len(known_face_locations). If it can't encode, does it skip?
@@ -316,8 +318,8 @@ def identify_faces(image_path=None, image_content=None):
 
     closest_distances = knn_clf.kneighbors(faces_encodings, n_neighbors=1)
     
-    # Stricter threshold to 0.50 to reduce false positives
-    threshold = 0.50
+    # Tightened to 0.60 to avoid false positives (0.65 was too loose)
+    threshold = 0.60
     are_matches = [closest_distances[0][i][0] <= threshold for i in range(len(faces_encodings))]
     
     predictions = []
@@ -329,7 +331,8 @@ def identify_faces(image_path=None, image_content=None):
             roll_number = pred
             try:
                 student = Student.objects.get(roll_number=roll_number)
-                name = student.name
+                # Show score in UI for user feedback
+                name = f"{student.name} ({distance_val})"
             except Student.DoesNotExist:
                 name = "Unknown"
                 roll_number = None

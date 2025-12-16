@@ -407,13 +407,13 @@ def process_live_frame(request):
                 imgstr = image_data
 
             try:
-                data = base64.b64decode(imgstr)
+                img_bytes = base64.b64decode(imgstr)
             except Exception as e:
                 print(f"Base64 decode error: {e}")
                 return JsonResponse({'status': 'error', 'message': 'Invalid base64 data'})
             
             # Convert to numpy array
-            nparr = np.frombuffer(data, np.uint8)
+            nparr = np.frombuffer(img_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
             if img is None:
@@ -1027,8 +1027,15 @@ def teacher_dashboard(request):
         cls.is_active = False
         if cls.start_time and cls.end_time:
             # Check if current time is within class hours
-            if cls.start_time <= current_time <= cls.end_time:
-                cls.is_active = True
+            if cls.start_time <= cls.end_time:
+                # Normal case: start <= now <= end
+                if cls.start_time <= current_time <= cls.end_time:
+                    cls.is_active = True
+            else:
+                # Midnight crossover: start > end (e.g. 23:00 to 01:00)
+                # Active if now >= start (23:30) OR now <= end (00:30)
+                if current_time >= cls.start_time or current_time <= cls.end_time:
+                    cls.is_active = True
         display_classes.append(cls)
 
     return render(request, 'teacher_dashboard.html', {
