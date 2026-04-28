@@ -1,0 +1,549 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+  /* ── Store page styles ── */
+  .store-hero {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 40%, #1565c0 100%);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    color: #fff;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .store-hero::after {
+    content: '\f291';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 7rem;
+    position: absolute;
+    right: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.1;
+    pointer-events: none;
+  }
+  .store-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: .4rem; }
+  .store-hero p  { opacity: .85; font-size: 1rem; margin-bottom: 0; }
+
+  /* tabs */
+  .store-tabs .nav-link {
+    border-radius: 12px 12px 0 0;
+    font-weight: 600;
+    color: #555;
+    padding: .75rem 1.5rem;
+    border: none;
+    border-bottom: 3px solid transparent;
+    transition: all .2s;
+  }
+  .store-tabs .nav-link.active {
+    color: #1565c0;
+    border-bottom-color: #1565c0;
+    background: transparent;
+  }
+  .store-tabs .nav-link .badge { font-size: .7rem; }
+
+  /* form cards */
+  .store-form-card {
+    border-radius: 18px;
+    border: none;
+    box-shadow: 0 4px 24px rgba(21,101,192,.12);
+    overflow: hidden;
+  }
+  .store-form-card .card-header {
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+  .assessment-header { background: linear-gradient(90deg, #1565c0, #1e88e5); color: #fff; }
+  .accessory-header  { background: linear-gradient(90deg, #2e7d32, #43a047); color: #fff; }
+
+  /* status badges */
+  .badge-pending  { background: #ff9800; color: #fff; }
+  .badge-approved { background: #2e7d32; color: #fff; }
+  .badge-rejected { background: #c62828; color: #fff; }
+
+  /* priority badges */
+  .badge-low    { background: #78909c; color: #fff; }
+  .badge-medium { background: #1976d2; color: #fff; }
+  .badge-high   { background: #e53935; color: #fff; }
+
+  /* request cards */
+  .req-card {
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 2px 14px rgba(0,0,0,.07);
+    transition: transform .25s, box-shadow .25s;
+    overflow: hidden;
+  }
+  .req-card:hover { transform: translateY(-3px); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+  .req-card .card-body { padding: 1.2rem 1.4rem; }
+  .req-card .req-type-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+  }
+  .req-card .req-meta { font-size: .8rem; color: #777; }
+
+  /* accessory icon map */
+  .acc-icon-pen           { background: #e3f2fd; color: #1565c0; }
+  .acc-icon-marker        { background: #f3e5f5; color: #6a1b9a; }
+  .acc-icon-duster        { background: #e8f5e9; color: #2e7d32; }
+  .acc-icon-chalk         { background: #fff3e0; color: #e65100; }
+  .acc-icon-board_cleaner { background: #e0f7fa; color: #00695c; }
+  .acc-icon-eraser        { background: #fce4ec; color: #c62828; }
+  .acc-icon-stapler       { background: #e8eaf6; color: #283593; }
+  .acc-icon-tape          { background: #fff8e1; color: #f57f17; }
+  .acc-icon-scissors      { background: #fbe9e7; color: #bf360c; }
+  .acc-icon-ruler         { background: #e1f5fe; color: #0277bd; }
+  .acc-icon-notebook      { background: #f9fbe7; color: #558b2f; }
+  .acc-icon-printer_paper { background: #eceff1; color: #37474f; }
+  .acc-icon-projector_remote { background: #e8eaf6; color: #1a237e; }
+  .acc-icon-pointer       { background: #ffebee; color: #b71c1c; }
+  .acc-icon-other         { background: #f5f5f5; color: #616161; }
+
+  /* dark mode */
+  body.dark-mode .store-form-card { background-color: #1e1e1e; }
+  body.dark-mode .req-card        { background-color: #1e1e1e; }
+  body.dark-mode .req-card .req-meta { color: #aaa; }
+  body.dark-mode .form-select, body.dark-mode .form-control { background:#2d2d2d; border-color:#444; color:#e0e0e0; }
+  body.dark-mode .store-tabs .nav-link { color: #aaa; }
+  body.dark-mode .store-tabs .nav-link.active { color: #90caf9; border-bottom-color: #90caf9; }
+</style>
+
+<!-- Hero Banner -->
+<div class="store-hero">
+  <h1><i class="fas fa-store me-2"></i>Teacher Store</h1>
+  <p>Request assessment resources or classroom accessories from the admin — all in one place.</p>
+</div>
+
+<!-- Tabs -->
+<ul class="nav store-tabs border-bottom mb-4" id="storeTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="assessment-tab" data-bs-toggle="tab"
+            data-bs-target="#assessmentTab" type="button" role="tab">
+      <i class="fas fa-file-alt me-2"></i>Assessment Requests
+      {% if my_requests %}
+      <span class="badge bg-primary ms-1">{{ my_requests.count }}</span>
+      {% endif %}
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="accessory-tab" data-bs-toggle="tab"
+            data-bs-target="#accessoryTab" type="button" role="tab">
+      <i class="fas fa-box-open me-2"></i>Accessories Request
+      {% if my_accessory_requests %}
+      <span class="badge bg-success ms-1">{{ my_accessory_requests.count }}</span>
+      {% endif %}
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content" id="storeTabContent">
+
+  <!-- ══════════ ASSESSMENT TAB ══════════ -->
+  <div class="tab-pane fade show active" id="assessmentTab" role="tabpanel">
+    <div class="row g-4">
+
+      <!-- Left: Form -->
+      <div class="col-lg-5">
+        <div class="card store-form-card">
+          <div class="card-header assessment-header">
+            <i class="fas fa-plus-circle me-2"></i>New Assessment Request
+          </div>
+          <div class="card-body p-4">
+            <form method="post" id="assessmentForm" novalidate>
+              {% csrf_token %}
+              <input type="hidden" name="form_type" value="assessment">
+
+              <!-- Subject -->
+              <div class="mb-3">
+                <label for="id_subject" class="form-label fw-semibold">Subject <span class="text-danger">*</span></label>
+                {% if teacher_subjects %}
+                <select class="form-select" id="id_subject" name="subject" required>
+                  <option value="">-- Select Subject --</option>
+                  {% for subj in teacher_subjects %}
+                  <option value="{{ subj }}">{{ subj }}</option>
+                  {% endfor %}
+                  <option value="__custom__">Other / Custom…</option>
+                </select>
+                <input type="text" class="form-control mt-2 d-none" id="id_subject_custom" name="subject_custom"
+                       placeholder="Enter subject name">
+                {% else %}
+                <input type="text" class="form-control" id="id_subject" name="subject" required
+                       placeholder="e.g. Mathematics">
+                {% endif %}
+              </div>
+
+              <!-- Assessment Type -->
+              <div class="mb-3">
+                <label for="id_assessment_type" class="form-label fw-semibold">Assessment Type <span class="text-danger">*</span></label>
+                <select class="form-select" id="id_assessment_type" name="assessment_type" required>
+                  {% for val, label in assessment_types %}
+                  <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Title -->
+              <div class="mb-3">
+                <label for="id_title" class="form-label fw-semibold">Request Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="id_title" name="title" required
+                       placeholder="e.g. Mid-Semester Question Paper Unit 1-3">
+              </div>
+
+              <!-- Year & Section -->
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label for="id_year" class="form-label fw-semibold">Year</label>
+                  <input type="text" class="form-control" id="id_year" name="year" placeholder="e.g. 2">
+                </div>
+                <div class="col-6">
+                  <label for="id_section" class="form-label fw-semibold">Section</label>
+                  <input type="text" class="form-control" id="id_section" name="section" placeholder="e.g. A">
+                </div>
+              </div>
+
+              <!-- Description -->
+              <div class="mb-4">
+                <label for="id_description" class="form-label fw-semibold">Additional Details</label>
+                <textarea class="form-control" id="id_description" name="description" rows="3"
+                          placeholder="Specify chapters, difficulty level, number of questions, etc."></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" id="submitAssessmentBtn">
+                <i class="fas fa-paper-plane me-2"></i>Submit Assessment Request
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: My Assessment Requests -->
+      <div class="col-lg-7">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0 fw-bold"><i class="fas fa-list-check me-2 text-primary"></i>My Assessment Requests</h5>
+          <span class="badge bg-secondary">{{ my_requests.count }} total</span>
+        </div>
+
+        {% if my_requests %}
+        <div class="d-flex flex-column gap-3">
+          {% for req in my_requests %}
+          <div class="card req-card">
+            <div class="card-body">
+              <div class="d-flex align-items-start gap-3">
+                <!-- Icon -->
+                {% if req.assessment_type == 'question_paper' %}
+                <div class="req-type-icon bg-primary bg-opacity-10 text-primary"><i class="fas fa-file-alt"></i></div>
+                {% elif req.assessment_type == 'assignment' %}
+                <div class="req-type-icon bg-success bg-opacity-10 text-success"><i class="fas fa-tasks"></i></div>
+                {% elif req.assessment_type == 'quiz' %}
+                <div class="req-type-icon bg-warning bg-opacity-10 text-warning"><i class="fas fa-question-circle"></i></div>
+                {% elif req.assessment_type == 'lab_work' %}
+                <div class="req-type-icon bg-info bg-opacity-10 text-info"><i class="fas fa-flask"></i></div>
+                {% elif req.assessment_type == 'project' %}
+                <div class="req-type-icon" style="background:#f3e5f5;color:#6a1b9a;"><i class="fas fa-project-diagram"></i></div>
+                {% else %}
+                <div class="req-type-icon bg-secondary bg-opacity-10 text-secondary"><i class="fas fa-ellipsis-h"></i></div>
+                {% endif %}
+
+                <div class="flex-grow-1 overflow-hidden">
+                  <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+                    <h6 class="mb-1 fw-bold text-truncate" title="{{ req.title }}">{{ req.title }}</h6>
+                    <span class="badge
+                      {% if req.status == 'Pending' %}badge-pending
+                      {% elif req.status == 'Approved' %}badge-approved
+                      {% else %}badge-rejected{% endif %}
+                      rounded-pill px-3">
+                      {% if req.status == 'Pending' %}<i class="fas fa-clock me-1"></i>
+                      {% elif req.status == 'Approved' %}<i class="fas fa-check-circle me-1"></i>
+                      {% else %}<i class="fas fa-times-circle me-1"></i>{% endif %}
+                      {{ req.status }}
+                    </span>
+                  </div>
+                  <div class="req-meta mb-1">
+                    <span class="me-3"><i class="fas fa-book me-1"></i>{{ req.subject }}</span>
+                    <span class="me-3"><i class="fas fa-tag me-1"></i>{{ req.get_assessment_type_display }}</span>
+                    {% if req.year %}<span class="me-3"><i class="fas fa-layer-group me-1"></i>Year {{ req.year }}{% if req.section %} / {{ req.section }}{% endif %}</span>{% endif %}
+                    <span><i class="far fa-calendar me-1"></i>{{ req.created_at|date:"d M Y" }}</span>
+                  </div>
+                  {% if req.description %}
+                  <p class="mb-1 small text-truncate" style="max-width:420px;" title="{{ req.description }}">
+                    {{ req.description }}
+                  </p>
+                  {% endif %}
+                  {% if req.admin_remarks %}
+                  <div class="alert alert-sm py-1 px-2 mb-0 mt-2
+                    {% if req.status == 'Approved' %}alert-success{% else %}alert-danger{% endif %}"
+                    style="font-size:.82rem; border-radius:8px;">
+                    <i class="fas fa-comment-dots me-1"></i><strong>Admin:</strong> {{ req.admin_remarks }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% if req.status == 'Pending' %}
+              <div class="text-end mt-2">
+                <form method="post" action="{% url 'cancel_assessment_request' req.id %}"
+                      onsubmit="return confirm('Cancel this request?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-trash-alt me-1"></i>Cancel Request
+                  </button>
+                </form>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="card req-card">
+          <div class="card-body text-center py-5">
+            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <h6 class="text-muted">No assessment requests yet</h6>
+            <p class="text-muted small">Use the form on the left to submit your first assessment request.</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div><!-- /assessmentTab -->
+
+
+  <!-- ══════════ ACCESSORIES TAB ══════════ -->
+  <div class="tab-pane fade" id="accessoryTab" role="tabpanel">
+    <div class="row g-4">
+
+      <!-- Left: Accessory Form -->
+      <div class="col-lg-5">
+        <div class="card store-form-card">
+          <div class="card-header accessory-header">
+            <i class="fas fa-plus-circle me-2"></i>Request Classroom Accessory
+          </div>
+          <div class="card-body p-4">
+            <form method="post" id="accessoryForm" novalidate>
+              {% csrf_token %}
+              <input type="hidden" name="form_type" value="accessory">
+
+              <!-- Accessory Type -->
+              <div class="mb-3">
+                <label for="id_accessory_type" class="form-label fw-semibold">Accessory Item <span class="text-danger">*</span></label>
+                <select class="form-select" id="id_accessory_type" name="accessory_type" required>
+                  {% for val, label in accessory_types %}
+                  <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Quantity -->
+              <div class="mb-3">
+                <label for="id_quantity" class="form-label fw-semibold">Quantity <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="id_quantity" name="quantity"
+                       value="1" min="1" max="100" required>
+              </div>
+
+              <!-- Priority -->
+              <div class="mb-3">
+                <label for="id_priority" class="form-label fw-semibold">Priority</label>
+                <select class="form-select" id="id_priority" name="priority">
+                  {% for val, label in priority_choices %}
+                  <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Notes -->
+              <div class="mb-4">
+                <label for="id_notes" class="form-label fw-semibold">Additional Notes</label>
+                <textarea class="form-control" id="id_notes" name="notes" rows="3"
+                          placeholder="Specify brand preference, classroom number, urgency reason, etc."></textarea>
+              </div>
+
+              <button type="submit" class="btn w-100 py-2 fw-semibold" id="submitAccessoryBtn"
+                      style="background:linear-gradient(90deg,#2e7d32,#43a047);color:#fff;">
+                <i class="fas fa-paper-plane me-2"></i>Submit Accessory Request
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Quick Tips -->
+        <div class="card mt-3" style="border-radius:14px;border:none;background:linear-gradient(135deg,#e8f5e9,#f1f8e9);box-shadow:0 2px 10px rgba(0,0,0,.06);">
+          <div class="card-body p-3">
+            <h6 class="fw-bold text-success mb-2"><i class="fas fa-lightbulb me-2"></i>Tips</h6>
+            <ul class="small text-muted mb-0 ps-3">
+              <li>Mark as <strong>High / Urgent</strong> only if it's needed within 24 hours.</li>
+              <li>Add notes with classroom number for faster delivery.</li>
+              <li>You can track approval status in the list on the right.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: My Accessory Requests -->
+      <div class="col-lg-7">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0 fw-bold"><i class="fas fa-box-open me-2 text-success"></i>My Accessory Requests</h5>
+          <span class="badge bg-secondary">{{ my_accessory_requests.count }} total</span>
+        </div>
+
+        {% if my_accessory_requests %}
+        <div class="d-flex flex-column gap-3">
+          {% for req in my_accessory_requests %}
+          <div class="card req-card">
+            <div class="card-body">
+              <div class="d-flex align-items-start gap-3">
+
+                <!-- Icon based on type -->
+                <div class="req-type-icon acc-icon-{{ req.accessory_type }}">
+                  {% if req.accessory_type == 'pen' %}<i class="fas fa-pen"></i>
+                  {% elif req.accessory_type == 'marker' %}<i class="fas fa-marker"></i>
+                  {% elif req.accessory_type == 'duster' %}<i class="fas fa-eraser"></i>
+                  {% elif req.accessory_type == 'chalk' %}<i class="fas fa-pencil-alt"></i>
+                  {% elif req.accessory_type == 'board_cleaner' %}<i class="fas fa-spray-can"></i>
+                  {% elif req.accessory_type == 'eraser' %}<i class="fas fa-eraser"></i>
+                  {% elif req.accessory_type == 'stapler' %}<i class="fas fa-paperclip"></i>
+                  {% elif req.accessory_type == 'tape' %}<i class="fas fa-tape"></i>
+                  {% elif req.accessory_type == 'scissors' %}<i class="fas fa-cut"></i>
+                  {% elif req.accessory_type == 'ruler' %}<i class="fas fa-ruler"></i>
+                  {% elif req.accessory_type == 'notebook' %}<i class="fas fa-book"></i>
+                  {% elif req.accessory_type == 'printer_paper' %}<i class="fas fa-file"></i>
+                  {% elif req.accessory_type == 'projector_remote' %}<i class="fas fa-wifi"></i>
+                  {% elif req.accessory_type == 'pointer' %}<i class="fas fa-dot-circle"></i>
+                  {% else %}<i class="fas fa-box"></i>{% endif %}
+                </div>
+
+                <div class="flex-grow-1 overflow-hidden">
+                  <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+                    <h6 class="mb-1 fw-bold">{{ req.get_accessory_type_display }}</h6>
+                    <span class="badge
+                      {% if req.status == 'Pending' %}badge-pending
+                      {% elif req.status == 'Approved' %}badge-approved
+                      {% else %}badge-rejected{% endif %}
+                      rounded-pill px-3">
+                      {% if req.status == 'Pending' %}<i class="fas fa-clock me-1"></i>
+                      {% elif req.status == 'Approved' %}<i class="fas fa-check-circle me-1"></i>
+                      {% else %}<i class="fas fa-times-circle me-1"></i>{% endif %}
+                      {{ req.status }}
+                    </span>
+                  </div>
+
+                  <div class="req-meta mb-1">
+                    <span class="me-3"><i class="fas fa-sort-numeric-up me-1"></i>Qty: {{ req.quantity }}</span>
+                    <span class="me-3">
+                      <span class="badge rounded-pill badge-{{ req.priority }} px-2">
+                        {% if req.priority == 'high' %}<i class="fas fa-exclamation-triangle me-1"></i>{% endif %}
+                        {{ req.get_priority_display }}
+                      </span>
+                    </span>
+                    <span><i class="far fa-calendar me-1"></i>{{ req.created_at|date:"d M Y" }}</span>
+                  </div>
+
+                  {% if req.notes %}
+                  <p class="mb-1 small text-truncate" style="max-width:420px;" title="{{ req.notes }}">
+                    <i class="fas fa-sticky-note me-1 text-muted"></i>{{ req.notes }}
+                  </p>
+                  {% endif %}
+
+                  {% if req.admin_remarks %}
+                  <div class="alert alert-sm py-1 px-2 mb-0 mt-2
+                    {% if req.status == 'Approved' %}alert-success{% else %}alert-danger{% endif %}"
+                    style="font-size:.82rem; border-radius:8px;">
+                    <i class="fas fa-comment-dots me-1"></i><strong>Admin:</strong> {{ req.admin_remarks }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              {% if req.status == 'Pending' %}
+              <div class="text-end mt-2">
+                <form method="post" action="{% url 'cancel_accessory_request' req.id %}"
+                      onsubmit="return confirm('Cancel this accessory request?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-trash-alt me-1"></i>Cancel Request
+                  </button>
+                </form>
+              </div>
+              {% endif %}
+
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="card req-card">
+          <div class="card-body text-center py-5">
+            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+            <h6 class="text-muted">No accessory requests yet</h6>
+            <p class="text-muted small">Use the form on the left to request pens, markers, dusters, and more.</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div><!-- /accessoryTab -->
+
+</div><!-- /tab-content -->
+
+<script>
+// Handle custom subject input toggle (Assessment form)
+(function () {
+  const sel = document.getElementById('id_subject');
+  const customInput = document.getElementById('id_subject_custom');
+  if (!sel || !customInput) return;
+
+  sel.addEventListener('change', function () {
+    if (this.value === '__custom__') {
+      customInput.classList.remove('d-none');
+      customInput.required = true;
+      customInput.focus();
+    } else {
+      customInput.classList.add('d-none');
+      customInput.required = false;
+    }
+  });
+
+  const form = document.getElementById('assessmentForm');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      if (sel.value === '__custom__') {
+        if (!customInput.value.trim()) {
+          e.preventDefault();
+          customInput.focus();
+          return;
+        }
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'subject';
+        hidden.value = customInput.value.trim();
+        sel.removeAttribute('name');
+        form.appendChild(hidden);
+      }
+    });
+  }
+})();
+
+// Persist active tab across redirects using sessionStorage
+(function () {
+  const tabKey = 'storeActiveTab';
+  const savedTab = sessionStorage.getItem(tabKey);
+  if (savedTab) {
+    const tabEl = document.querySelector('[data-bs-target="' + savedTab + '"]');
+    if (tabEl) {
+      const bsTab = new bootstrap.Tab(tabEl);
+      bsTab.show();
+    }
+  }
+  document.querySelectorAll('#storeTabs .nav-link').forEach(function (el) {
+    el.addEventListener('shown.bs.tab', function () {
+      sessionStorage.setItem(tabKey, el.getAttribute('data-bs-target'));
+    });
+  });
+})();
+</script>
+{% endblock %}

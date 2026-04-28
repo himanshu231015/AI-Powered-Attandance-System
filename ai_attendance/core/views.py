@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
-from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification
+from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest
 from .utils import train_model, identify_faces, detect_and_crop_face, get_existing_attendance_record
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -829,13 +829,45 @@ def admin_dashboard(request):
     # Get recent attendance
     recent_attendance = AttendanceRecord.objects.all().order_by('-date', '-time')[:5]
     
+    # Assessment Requests
+    pending_requests = AssessmentRequest.objects.filter(status='Pending').order_by('-created_at')
+    pending_count = pending_requests.count()
+
+    # Accessory Requests
+    pending_accessory_requests = AccessoryRequest.objects.filter(status='Pending').order_by('-created_at')
+    pending_accessory_count = pending_accessory_requests.count()
+
     context = {
         'total_students': total_students,
         'total_teachers': total_teachers,
         'total_attendance': total_attendance,
         'recent_attendance': recent_attendance,
+        'pending_requests': pending_requests,
+        'pending_requests_count': pending_count,
+        'pending_accessory_requests': pending_accessory_requests,
+        'pending_accessory_count': pending_accessory_count,
     }
     return render(request, 'admin_dashboard.html', context)
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def review_assessment_request(request, request_id):
+    """Admin: Approve or Reject a teacher assessment request."""
+    req = get_object_or_404(AssessmentRequest, id=request_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        admin_remarks = request.POST.get('admin_remarks', '')
+        if action == 'approve':
+            req.status = 'Approved'
+            req.admin_remarks = admin_remarks
+            req.save()
+            messages.success(request, f"Request '{req.title}' approved.")
+        elif action == 'reject':
+            req.status = 'Rejected'
+            req.admin_remarks = admin_remarks
+            req.save()
+            messages.warning(request, f"Request '{req.title}' rejected.")
+    return redirect('admin_dashboard')
 
 @login_required
 def profile(request):
@@ -1147,6 +1179,125 @@ def delete_teacher_subject(request, subject_id):
             messages.error(request, f"Error deleting assignment: {e}")
             
     return redirect('manage_teacher_subjects')
+
+# --- Teacher Store / Assessment Request + Accessories ---
+
+@login_required
+def teacher_store(request):
+    """Teacher Store: Unified page for assessment and accessory requests."""
+    if not request.user.is_staff or request.user.is_superuser:
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    # Teacher's assigned subjects (for auto-fill dropdown)
+    teacher_subjects = TeacherSubject.objects.filter(teacher=request.user).values_list('subject', flat=True).distinct()
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type', 'assessment')
+
+        if form_type == 'accessory':
+            # ── Accessory Request ──
+            accessory_type = request.POST.get('accessory_type', 'pen')
+            quantity = request.POST.get('quantity', '1').strip() or '1'
+            priority = request.POST.get('priority', 'medium')
+            notes = request.POST.get('notes', '').strip()
+            try:
+                quantity = max(1, int(quantity))
+            except ValueError:
+                quantity = 1
+            AccessoryRequest.objects.create(
+                teacher=request.user,
+                accessory_type=accessory_type,
+                quantity=quantity,
+                priority=priority,
+                notes=notes,
+            )
+            acc_label = dict(AccessoryRequest.ACCESSORY_TYPES).get(accessory_type, accessory_type)
+            messages.success(request, f"Accessory request for '{acc_label}' (x{quantity}) submitted!")
+            return redirect('teacher_store')
+
+        else:
+            # ── Assessment Request ──
+            subject = request.POST.get('subject', '').strip()
+            assessment_type = request.POST.get('assessment_type', 'question_paper')
+            title = request.POST.get('title', '').strip()
+            description = request.POST.get('description', '').strip()
+            year = request.POST.get('year', '').strip()
+            section = request.POST.get('section', '').strip()
+
+            if not subject or not title:
+                messages.error(request, 'Subject and Title are required fields.')
+            else:
+                AssessmentRequest.objects.create(
+                    teacher=request.user,
+                    subject=subject,
+                    assessment_type=assessment_type,
+                    title=title,
+                    description=description,
+                    year=year,
+                    section=section,
+                )
+                messages.success(request, f"Assessment request for '{title}' submitted successfully!")
+                return redirect('teacher_store')
+
+    my_requests = AssessmentRequest.objects.filter(teacher=request.user)
+    my_accessory_requests = AccessoryRequest.objects.filter(teacher=request.user)
+    assessment_types = AssessmentRequest.ASSESSMENT_TYPES
+    accessory_types = AccessoryRequest.ACCESSORY_TYPES
+    priority_choices = AccessoryRequest.PRIORITY_CHOICES
+
+    return render(request, 'teacher_portal/teacher_store.html', {
+        'my_requests': my_requests,
+        'my_accessory_requests': my_accessory_requests,
+        'teacher_subjects': teacher_subjects,
+        'assessment_types': assessment_types,
+        'accessory_types': accessory_types,
+        'priority_choices': priority_choices,
+    })
+
+
+@login_required
+def cancel_assessment_request(request, request_id):
+    """Teacher: Cancel a pending assessment request."""
+    req = get_object_or_404(AssessmentRequest, id=request_id, teacher=request.user)
+    if req.status == 'Pending':
+        req.delete()
+        messages.success(request, f"Request '{req.title}' has been cancelled.")
+    else:
+        messages.error(request, "Only pending requests can be cancelled.")
+    return redirect('teacher_store')
+
+
+@login_required
+def cancel_accessory_request(request, request_id):
+    """Teacher: Cancel a pending accessory request."""
+    req = get_object_or_404(AccessoryRequest, id=request_id, teacher=request.user)
+    if req.status == 'Pending':
+        req.delete()
+        messages.success(request, f"Accessory request cancelled.")
+    else:
+        messages.error(request, "Only pending requests can be cancelled.")
+    return redirect('teacher_store')
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def review_accessory_request(request, request_id):
+    """Admin: Approve or reject an accessory request."""
+    req = get_object_or_404(AccessoryRequest, id=request_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        admin_remarks = request.POST.get('admin_remarks', '').strip()
+        if action == 'approve':
+            req.status = 'Approved'
+        elif action == 'reject':
+            req.status = 'Rejected'
+        if admin_remarks:
+            req.admin_remarks = admin_remarks
+        req.save()
+        messages.success(request, f"Accessory request has been {req.status.lower()}.")
+    return redirect('admin_dashboard')
+
 
 # --- Notification Logic ---
 

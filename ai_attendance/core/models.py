@@ -95,3 +95,82 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.recipient.name}: {self.message}"
+
+class AssessmentRequest(models.Model):
+    ASSESSMENT_TYPES = [
+        ('question_paper', 'Question Paper'),
+        ('assignment', 'Assignment'),
+        ('quiz', 'Quiz / MCQ Set'),
+        ('lab_work', 'Lab Work / Practical'),
+        ('project', 'Project Topic'),
+        ('other', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assessment_requests')
+    subject = models.CharField(max_length=100)
+    assessment_type = models.CharField(max_length=30, choices=ASSESSMENT_TYPES, default='question_paper')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    year = models.CharField(max_length=10, blank=True)
+    section = models.CharField(max_length=10, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    admin_remarks = models.TextField(blank=True, null=True, help_text='Admin response or remarks')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.title} [{self.status}]"
+
+
+class AccessoryRequest(models.Model):
+    ACCESSORY_TYPES = [
+        ('pen', 'Pen'),
+        ('marker', 'Marker / Whiteboard Marker'),
+        ('duster', 'Duster / Board Eraser'),
+        ('chalk', 'Chalk'),
+        ('board_cleaner', 'Board Cleaner / Spray'),
+        ('eraser', 'Eraser'),
+        ('stapler', 'Stapler'),
+        ('tape', 'Tape / Adhesive'),
+        ('scissors', 'Scissors'),
+        ('ruler', 'Ruler / Scale'),
+        ('notebook', 'Notebook / Register'),
+        ('printer_paper', 'Printer Paper / A4 Sheets'),
+        ('projector_remote', 'Projector Remote'),
+        ('pointer', 'Laser Pointer'),
+        ('other', 'Other'),
+    ]
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High / Urgent'),
+    ]
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accessory_requests')
+    accessory_type = models.CharField(max_length=30, choices=ACCESSORY_TYPES, default='pen')
+    quantity = models.PositiveIntegerField(default=1)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    notes = models.TextField(blank=True, help_text='Any extra details about the request')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    admin_remarks = models.TextField(blank=True, null=True, help_text='Admin response or remarks')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.get_accessory_type_display()} x{self.quantity} [{self.status}]"

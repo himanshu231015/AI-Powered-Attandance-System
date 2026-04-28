@@ -32,4 +32,9 @@ urlpatterns = [
     path('assign_teacher_subject/', views.assign_teacher_subject, name='assign_teacher_subject'),
     path('edit_teacher_subject/<int:subject_id>/', views.edit_teacher_subject, name='edit_teacher_subject'),
     path('delete_teacher_subject/<int:subject_id>/', views.delete_teacher_subject, name='delete_teacher_subject'),
+    path('store/', views.teacher_store, name='teacher_store'),
+    path('store/cancel/<int:request_id>/', views.cancel_assessment_request, name='cancel_assessment_request'),
+    path('store/review/<int:request_id>/', views.review_assessment_request, name='review_assessment_request'),
+    path('store/accessory/cancel/<int:request_id>/', views.cancel_accessory_request, name='cancel_accessory_request'),
+    path('store/accessory/review/<int:request_id>/', views.review_accessory_request, name='review_accessory_request'),
 ]
