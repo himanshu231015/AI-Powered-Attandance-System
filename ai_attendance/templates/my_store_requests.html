@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+.status-pill { font-size:.78rem; padding:5px 14px; border-radius:20px; font-weight:600; display:inline-block; }
+.sp-pending_hod   { background:#fef3c7; color:#d97706; border:1px solid #fde68a; }
+.sp-hod_rejected  { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
+.sp-pending_store { background:#dbeafe; color:#2563eb; border:1px solid #93c5fd; }
+.sp-assigned      { background:#ede9fe; color:#7c3aed; border:1px solid #c4b5fd; }
+.sp-partial       { background:#cffafe; color:#0891b2; border:1px solid #67e8f9; }
+.sp-fulfilled     { background:#d1fae5; color:#059669; border:1px solid #6ee7b7; }
+.sp-rejected      { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
+.timeline-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="header-title mb-0">📦 Store Requests</h2>
+        <p class="text-muted small mb-0">Track and manage store requests</p>
+    </div>
+    <a href="{% url 'submit_store_request' %}" class="btn btn-success btn-sm">
+        <i class="fas fa-plus me-1"></i> New Request
+    </a>
+</div>
+
+{% if is_hod %}
+<!-- Tabs for HOD -->
+<ul class="nav nav-pills mb-4" id="requestTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active fw-semibold" id="my-requests-tab" data-bs-toggle="pill" data-bs-target="#my-requests" type="button" role="tab" aria-controls="my-requests" aria-selected="true">
+      <i class="fas fa-box me-1"></i> My Requests
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link fw-semibold" id="hod-approvals-tab" data-bs-toggle="pill" data-bs-target="#hod-approvals" type="button" role="tab" aria-controls="hod-approvals" aria-selected="false">
+      <i class="fas fa-clipboard-check me-1"></i> HOD Approvals
+      {% if pending.count > 0 %}<span class="badge bg-danger ms-1">{{ pending.count }}</span>{% endif %}
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content" id="requestTabsContent">
+  <!-- My Requests Tab -->
+  <div class="tab-pane fade show active" id="my-requests" role="tabpanel" aria-labelledby="my-requests-tab">
+{% endif %}
+
+    <!-- EXISTING MY REQUESTS LOGIC -->
+    {% if my_requests %}
+    {% for req in my_requests %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between pe-4">
+            <div>
+                <span class="fw-bold">{{ req.title }}</span>
+                <span class="text-muted small ms-2">{{ req.created_at|date:"d M Y, H:i" }}</span>
+            </div>
+            <span class="status-pill sp-{{ req.status }}">
+                {% if req.status == 'pending_hod'   %}⏳ Awaiting HOD
+                {% elif req.status == 'hod_rejected' %}❌ Rejected by HOD
+                {% elif req.status == 'pending_store'%}📤 At Store Head
+                {% elif req.status == 'assigned'     %}🔧 Being Processed
+                {% elif req.status == 'partial'      %}🔵 Partially Fulfilled
+                {% elif req.status == 'fulfilled'    %}✅ Fully Fulfilled
+                {% else %}❌ Rejected{% endif %}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- Items Breakdown -->
+                <div class="col-md-7">
+                    <h6 class="fw-semibold mb-2">Items</h6>
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Item</th><th class="text-center">Requested</th><th class="text-center">Received</th><th class="text-center">Status</th></tr></thead>
+                        <tbody>
+                        {% for item in req.items.all %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td class="text-center"><span class="badge bg-secondary">{{ item.quantity_requested }}</span></td>
+                            <td class="text-center">
+                                <span class="badge {% if item.is_fulfilled %}bg-success{% elif item.quantity_provided > 0 %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}">
+                                    {{ item.quantity_provided }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if item.is_fulfilled %}
+                                <span class="badge bg-success">✓ Full</span>
+                                {% elif item.quantity_provided > 0 %}
+                                <span class="badge bg-warning text-dark">{{ item.fulfillment_pct }}%</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Pending</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if req.total_items > 0 %}
+                    <div class="mt-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:7px;">
+                                <div class="progress-bar {% if req.fulfillment_pct == 100 %}bg-success{% elif req.fulfillment_pct > 0 %}bg-warning{% else %}bg-secondary{% endif %}"
+                                     style="width:{{ req.fulfillment_pct }}%"></div>
+                            </div>
+                            <small class="text-muted fw-semibold">{{ req.fulfillment_pct }}%</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Status Timeline -->
+                <div class="col-md-5">
+                    <h6 class="fw-semibold mb-2">Status Timeline</h6>
+                    <!-- Step 1: Submitted -->
+                    <div class="d-flex gap-2 mb-2">
+                        <div class="timeline-dot" style="background:#6b7280;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold">Request Submitted</div>
+                        <div class="text-muted" style="font-size:.75rem;">{{ req.created_at|date:"d M Y" }}</div></div>
+                    </div>
+
+                    <!-- Step 2: HOD -->
+                    <div class="d-flex gap-2 mb-2">
+                        {% if req.status == 'pending_hod' %}
+                        <div class="timeline-dot" style="background:#f59e0b;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold text-warning">⏳ Awaiting HOD Approval</div></div>
+                        {% elif req.status == 'hod_rejected' %}
+                        <div class="timeline-dot" style="background:#ef4444;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold text-danger">❌ Rejected by HOD</div>
+                        {% if req.hod_remarks %}<div class="text-muted" style="font-size:.75rem;">Remark: {{ req.hod_remarks }}</div>{% endif %}
+                        </div>
+                        {% else %}
+                        <div class="timeline-dot" style="background:#10b981;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold text-success">✓ HOD Approved</div>
+                        {% if req.hod_approved_by %}<div class="text-muted" style="font-size:.75rem;">By {{ req.hod_approved_by.username }} on {{ req.hod_approved_at|date:"d M Y" }}</div>{% endif %}
+                        {% if req.hod_remarks %}<div class="text-muted" style="font-size:.75rem;"><em>{{ req.hod_remarks }}</em></div>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Step 3: Store -->
+                    {% if req.status not in 'pending_hod,hod_rejected' %}
+                    <div class="d-flex gap-2 mb-2">
+                        {% if req.status == 'pending_store' %}
+                        <div class="timeline-dot" style="background:#3b82f6;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold text-primary">📤 At Store Head</div></div>
+                        {% else %}
+                        <div class="timeline-dot" style="background:#10b981;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold text-success">✓ Assigned to Staff</div>
+                        {% if req.assigned_to %}<div class="text-muted" style="font-size:.75rem;">{{ req.assigned_to.user.get_full_name|default:req.assigned_to.user.username }}</div>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Step 4: Fulfilment / Staff Response -->
+                    {% if req.staff_response or req.expected_delivery %}
+                    <div class="d-flex gap-2 mb-2">
+                        <div class="timeline-dot" style="background:#7c3aed;margin-top:4px;"></div>
+                        <div>
+                            <div class="small fw-semibold" style="color:#7c3aed;">Store Staff Response</div>
+                            {% if req.staff_response %}<div class="text-muted" style="font-size:.75rem;">{{ req.staff_response }}</div>{% endif %}
+                            {% if req.expected_delivery %}<div class="text-muted" style="font-size:.75rem;">📅 Expected by: <strong>{{ req.expected_delivery }}</strong></div>{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Step 5: Final -->
+                    {% if req.status == 'fulfilled' %}
+                    <div class="d-flex gap-2">
+                        <div class="timeline-dot" style="background:#10b981;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold text-success">✅ Fully Fulfilled</div></div>
+                    </div>
+                    {% elif req.status == 'partial' %}
+                    <div class="d-flex gap-2">
+                        <div class="timeline-dot" style="background:#06b6d4;margin-top:4px;"></div>
+                        <div><div class="small fw-semibold" style="color:#0891b2;">🔵 Partially Fulfilled</div></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="fas fa-inbox fa-3x mb-3"></i>
+            <h5>No store requests yet</h5>
+            <p class="mb-3">Submit a request to get items from the store.</p>
+        </div>
+    </div>
+    {% endif %}
+
+{% if is_hod %}
+  </div>
+  
+  <!-- HOD Approvals Tab -->
+  <div class="tab-pane fade" id="hod-approvals" role="tabpanel" aria-labelledby="hod-approvals-tab">
+        <div class="d-flex align-items-center mb-3">
+            <h5 class="mb-0 text-muted">Department: <strong>{{ dept }}</strong></h5>
+        </div>
+
+        <!-- Pending Requests -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex align-items-center gap-2"
+                 style="background:linear-gradient(90deg,#92400e,#f59e0b);color:#fff;">
+                <i class="fas fa-clock fa-lg"></i>
+                <h5 class="mb-0">Pending Your Approval</h5>
+                <span class="badge bg-light text-dark ms-auto">{{ pending.count }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if pending %}
+                <div class="accordion" id="pendingAcc">
+                {% for req in pending %}
+                <div class="accordion-item border-0 border-bottom">
+                    <button class="accordion-button collapsed py-3 px-4" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#p{{ req.id }}">
+                        <div class="row w-100 align-items-center g-2">
+                            <div class="col-md-4 fw-bold">
+                                <i class="fas fa-user me-1 text-primary"></i>
+                                {{ req.requested_by.get_full_name|default:req.requested_by.username }}
+                                <div class="fw-normal text-muted small">{{ req.title }}</div>
+                            </div>
+                            <div class="col-md-3 text-muted small">{{ req.created_at|date:"d M Y, H:i" }}</div>
+                            <div class="col-md-3">
+                                <span class="status-pill sp-pending_hod">⏳ Awaiting Approval</span>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <span class="badge bg-secondary">{{ req.total_items }} items</span>
+                            </div>
+                        </div>
+                    </button>
+                    <div id="p{{ req.id }}" class="accordion-collapse collapse">
+                        <div class="accordion-body px-4">
+                            <!-- Items Table -->
+                            <table class="table table-sm mb-3">
+                                <thead><tr><th>Item</th><th class="text-center">Qty Requested</th></tr></thead>
+                                <tbody>
+                                {% for item in req.items.all %}
+                                <tr>
+                                    <td>{{ item.item_name }}</td>
+                                    <td class="text-center"><span class="badge bg-secondary">{{ item.quantity_requested }}</span></td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                            {% if req.notes %}
+                            <div class="alert alert-light py-2 mb-3"><small><strong>Notes:</strong> {{ req.notes }}</small></div>
+                            {% endif %}
+
+                            <!-- Approve / Reject Form -->
+                            <form method="post" action="{% url 'hod_review_store_request' req.id %}">
+                                {% csrf_token %}
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Your Remarks (optional)</label>
+                                    <textarea name="hod_remarks" class="form-control form-control-sm" rows="2"
+                                              placeholder="Add a note for the store…"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" name="action" value="approve"
+                                            class="btn btn-success btn-sm">
+                                        <i class="fas fa-check me-1"></i>Approve & Forward to Store
+                                    </button>
+                                    <button type="submit" name="action" value="reject"
+                                            class="btn btn-danger btn-sm">
+                                        <i class="fas fa-times me-1"></i>Reject
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                    <p class="mb-0">No pending requests — all clear!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Reviewed Requests -->
+        <div class="card shadow-sm">
+            <div class="card-header" style="background:rgba(255,255,255,0.05);">
+                <h5 class="mb-0">📁 Previously Reviewed</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if reviewed %}
+                <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark" style="--bs-table-bg:#0d1b2e;">
+                        <tr><th class="ps-4">Teacher</th><th>Title</th><th>Items</th><th>Status</th><th>Your Remark</th><th>Date</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for req in reviewed %}
+                    <tr>
+                        <td class="ps-4 fw-semibold">{{ req.requested_by.username }}</td>
+                        <td>{{ req.title }}</td>
+                        <td class="text-center">{{ req.total_items }}</td>
+                        <td>
+                            <span class="status-pill sp-{{ req.status }}">
+                                {% if req.status == 'pending_store' %}📤 Sent to Store
+                                {% elif req.status == 'assigned' %}🔧 Assigned
+                                {% elif req.status == 'partial' %}🔵 Partial
+                                {% elif req.status == 'fulfilled' %}✅ Fulfilled
+                                {% elif req.status == 'hod_rejected' %}❌ Rejected by You
+                                {% else %}{{ req.get_status_display }}{% endif %}
+                            </span>
+                        </td>
+                        <td class="text-muted small">{{ req.hod_remarks|default:"—" }}</td>
+                        <td class="text-muted small">{{ req.hod_approved_at|date:"d M Y"|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted"><p class="mb-0">No reviewed requests yet.</p></div>
+                {% endif %}
+            </div>
+        </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

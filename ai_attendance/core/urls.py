@@ -39,11 +39,19 @@ urlpatterns = [
     path('store/review/<int:request_id>/', views.review_assessment_request, name='review_assessment_request'),
     path('store/accessory/cancel/<int:request_id>/', views.cancel_accessory_request, name='cancel_accessory_request'),
     path('store/accessory/review/<int:request_id>/', views.review_accessory_request, name='review_accessory_request'),
-    # Store Management
+    # Store Management (Admin)
     path('store_dashboard/', views.admin_store_dashboard, name='admin_store_dashboard'),
     path('store_staff/add/', views.add_store_staff, name='add_store_staff'),
     path('store_staff/edit/<int:staff_id>/', views.edit_store_staff, name='edit_store_staff'),
     path('store_staff/delete/<int:staff_id>/', views.delete_store_staff, name='delete_store_staff'),
     path('store_request/update/<int:request_id>/', views.update_store_request, name='update_store_request'),
+    # Store Workflow
     path('store_request/submit/', views.submit_store_request, name='submit_store_request'),
+    path('store_request/mine/', views.my_store_requests, name='my_store_requests'),
+    path('hod/store/', views.hod_store_requests, name='hod_store_requests'),
+    path('hod/store/review/<int:request_id>/', views.hod_review_store_request, name='hod_review_store_request'),
+    path('store_head/', views.store_head_dashboard, name='store_head_dashboard'),
+    path('store_head/assign/<int:request_id>/', views.assign_store_request, name='assign_store_request'),
+    path('store_staff/tasks/', views.store_staff_tasks, name='store_staff_tasks'),
+    path('store_staff/respond/<int:request_id>/', views.store_staff_respond, name='store_staff_respond'),
 ]

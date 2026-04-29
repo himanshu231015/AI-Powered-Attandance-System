@@ -191,23 +191,27 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
-                    {% if user.is_staff %}
                     {% if user.is_superuser %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'admin_dashboard' %}">Dashboard</a></li>
-                    {% else %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}">Students</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'admin_store_dashboard' %}"><i class="fas fa-store me-1"></i>Store</a></li>
+                    {% elif user.is_staff %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'teacher_dashboard' %}">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Profile</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}">Student Attendance</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'my_store_requests' %}"><i class="fas fa-boxes me-1"></i>Store Requests</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'teacher_store' %}"><i class="fas fa-store me-1"></i>Store</a></li>
-                    {% endif %}
-                    {% if user.is_superuser %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}">Manage Students</a></li>
-                    {% endif %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'upload_attendance' %}">Take Attendance</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'upload_attendance' %}">Take Attendance</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'attendance_list' %}">History</a></li>
                     {% else %}
+                    {# Store staff / store head (non-teacher, non-student) #}
+                    {% if user.store_profile.role == 'head' %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'store_head_dashboard' %}"><i class="fas fa-store me-1"></i>Store Head</a></li>
+                    {% elif user.store_profile %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'store_staff_tasks' %}"><i class="fas fa-tasks me-1"></i>My Tasks</a></li>
+                    {% else %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'student_dashboard' %}">Dashboard</a></li>
+                    {% endif %}
                     {% endif %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"

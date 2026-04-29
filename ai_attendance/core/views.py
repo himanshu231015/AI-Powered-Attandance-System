@@ -28,10 +28,20 @@ def login_view(request):
             login(request, user)
             if user.is_superuser:
                 return redirect('admin_dashboard')
-            elif user.is_staff:
+            # Store Staff / Store Head redirect
+            try:
+                sp = user.store_profile
+                if sp.role == 'head':
+                    return redirect('store_head_dashboard')
+                else:
+                    return redirect('store_staff_tasks')
+            except Exception:
+                pass
+            # Teacher redirect
+            if user.is_staff:
                 return redirect('teacher_dashboard')
-            else:
-                return redirect('student_dashboard')
+            # Student redirect
+            return redirect('student_dashboard')
         else:
             messages.error(request, 'Invalid username or password.')
     return render(request, 'login.html')
@@ -1614,3 +1624,244 @@ def submit_store_request(request):
         return redirect('teacher_dashboard')
 
     return render(request, 'submit_store_request.html')
+
+
+# ───────────────────────────────────────────────────────
+#  STORE WORKFLOW — HOD → Store Head → Store Staff
+# ───────────────────────────────────────────────────────
+
+def _get_hod_profile(user):
+    """Return TeacherProfile if user is HOD, else None."""
+    try:
+        p = user.teacher_profile
+        return p if p.designation == 'hod' else None
+    except Exception:
+        return None
+
+def _get_store_staff_profile(user):
+    """Return StoreStaff profile if user is store staff/head, else None."""
+    try:
+        return user.store_profile
+    except Exception:
+        return None
+
+
+# ── HOD: see & approve requests from their dept ──────────────────────
+@login_required
+def hod_store_requests(request):
+    """HOD sees pending store requests from teachers in their department."""
+    hod_profile = _get_hod_profile(request.user)
+    if not hod_profile:
+        messages.error(request, "Access denied — HOD only.")
+        return redirect('teacher_dashboard')
+
+    dept = hod_profile.department
+    # Teachers in same dept (not HOD themselves)
+    dept_teacher_ids = User.objects.filter(
+        teacher_profile__department=dept,
+        is_staff=True, is_superuser=False
+    ).values_list('id', flat=True)
+
+    pending   = StoreRequest.objects.filter(
+        requested_by__in=dept_teacher_ids, status='pending_hod'
+    ).prefetch_related('items').select_related('requested_by')
+
+    reviewed  = StoreRequest.objects.filter(
+        requested_by__in=dept_teacher_ids
+    ).exclude(status='pending_hod').prefetch_related('items').select_related(
+        'requested_by', 'hod_approved_by', 'assigned_to__user', 'fulfilled_by__user'
+    )
+
+    return render(request, 'hod_store_requests.html', {
+        'pending':  pending,
+        'reviewed': reviewed,
+        'dept':     dept,
+    })
+
+
+@login_required
+def hod_review_store_request(request, request_id):
+    """HOD approves or rejects a store request."""
+    hod_profile = _get_hod_profile(request.user)
+    if not hod_profile:
+        return redirect('teacher_dashboard')
+
+    store_req   = get_object_or_404(StoreRequest, id=request_id, status='pending_hod')
+    if request.method == 'POST':
+        action      = request.POST.get('action')
+        hod_remarks = request.POST.get('hod_remarks', '').strip()
+
+        store_req.hod_approved_by  = request.user
+        store_req.hod_approved_at  = timezone.now()
+        store_req.hod_remarks      = hod_remarks
+
+        if action == 'approve':
+            store_req.status = 'pending_store'
+            messages.success(request, f"Request '{store_req.title}' approved → sent to Store Head.")
+        else:
+            store_req.status = 'hod_rejected'
+            messages.warning(request, f"Request '{store_req.title}' rejected.")
+
+        store_req.save()
+    return redirect('hod_store_requests')
+
+
+# ── Store Head: assign requests to staff ─────────────────────────────
+@login_required
+def store_head_dashboard(request):
+    """Store Head sees pending_store requests and can assign them."""
+    sp = _get_store_staff_profile(request.user)
+    if not sp or sp.role != 'head':
+        messages.error(request, "Access denied — Store Head only.")
+        return redirect('login')
+
+    pending_store = StoreRequest.objects.filter(
+        status='pending_store'
+    ).prefetch_related('items').select_related('requested_by', 'hod_approved_by')
+
+    assigned = StoreRequest.objects.filter(
+        status='assigned'
+    ).prefetch_related('items').select_related('requested_by', 'assigned_to__user')
+
+    done = StoreRequest.objects.filter(
+        status__in=['partial', 'fulfilled', 'rejected']
+    ).prefetch_related('items').select_related('requested_by', 'assigned_to__user')[:20]
+
+    all_staff = StoreStaff.objects.filter(role='staff').select_related('user')
+
+    return render(request, 'store_head_dashboard.html', {
+        'pending_store': pending_store,
+        'assigned':      assigned,
+        'done':          done,
+        'all_staff':     all_staff,
+    })
+
+
+@login_required
+def assign_store_request(request, request_id):
+    """Store Head assigns a request to a specific store staff member."""
+    sp = _get_store_staff_profile(request.user)
+    if not sp or sp.role != 'head':
+        return redirect('login')
+
+    store_req = get_object_or_404(StoreRequest, id=request_id, status='pending_store')
+    if request.method == 'POST':
+        staff_id = request.POST.get('staff_id', '').strip()
+        remarks  = request.POST.get('remarks', '').strip()
+        try:
+            staff = StoreStaff.objects.get(id=staff_id)
+            store_req.assigned_to  = staff
+            store_req.assigned_at  = timezone.now()
+            store_req.status       = 'assigned'
+            store_req.remarks      = remarks
+            store_req.save()
+            messages.success(request, f"Assigned to {staff.user.username}!")
+        except StoreStaff.DoesNotExist:
+            messages.error(request, "Staff not found.")
+    return redirect('store_head_dashboard')
+
+
+# ── Store Staff: see tasks & respond ─────────────────────────────────
+@login_required
+def store_staff_tasks(request):
+    """Store Staff sees their assigned tasks."""
+    sp = _get_store_staff_profile(request.user)
+    if not sp:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+
+    active    = StoreRequest.objects.filter(
+        assigned_to=sp, status='assigned'
+    ).prefetch_related('items').select_related('requested_by')
+
+    completed = StoreRequest.objects.filter(
+        assigned_to=sp, status__in=['partial', 'fulfilled']
+    ).prefetch_related('items').select_related('requested_by')
+
+    return render(request, 'store_staff_tasks.html', {
+        'active':    active,
+        'completed': completed,
+        'sp':        sp,
+    })
+
+
+@login_required
+def store_staff_respond(request, request_id):
+    """Store Staff submits fulfilment response with qty + expected delivery."""
+    sp = _get_store_staff_profile(request.user)
+    if not sp:
+        return redirect('login')
+
+    store_req = get_object_or_404(StoreRequest, id=request_id, assigned_to=sp)
+    if request.method == 'POST':
+        from datetime import date as date_cls
+        staff_response    = request.POST.get('staff_response', '').strip()
+        expected_delivery = request.POST.get('expected_delivery', '').strip()
+
+        # Update each item's qty_provided
+        for item in store_req.items.all():
+            key     = f'qty_provided_{item.id}'
+            new_qty = request.POST.get(key)
+            if new_qty is not None:
+                try:
+                    item.quantity_provided = max(0, min(int(new_qty), item.quantity_requested))
+                    item.save()
+                except ValueError:
+                    pass
+
+        if expected_delivery:
+            try:
+                store_req.expected_delivery = date_cls.fromisoformat(expected_delivery)
+            except ValueError:
+                pass
+
+        store_req.staff_response = staff_response
+        store_req.fulfilled_by   = sp
+
+        # Auto-compute status
+        items = list(store_req.items.all())
+        if items:
+            if all(i.is_fulfilled for i in items):
+                store_req.status = 'fulfilled'
+            elif any(i.quantity_provided > 0 for i in items):
+                store_req.status = 'partial'
+
+        store_req.save()
+        messages.success(request, "Response submitted successfully!")
+    return redirect('store_staff_tasks')
+
+
+# ── Teacher: track their own store request statuses ───────────────────
+@login_required
+def my_store_requests(request):
+    """Teacher sees all their store requests, and if they are an HOD, they also see pending approvals for their dept."""
+    my_requests = StoreRequest.objects.filter(
+        requested_by=request.user
+    ).prefetch_related('items').select_related(
+        'hod_approved_by', 'assigned_to__user', 'fulfilled_by__user'
+    )
+    
+    context = {'my_requests': my_requests, 'is_hod': False}
+    
+    # Check if user is HOD
+    hod_profile = _get_hod_profile(request.user)
+    if hod_profile:
+        context['is_hod'] = True
+        context['dept'] = hod_profile.department
+        
+        dept_teacher_ids = User.objects.filter(
+            teacher_profile__department=hod_profile.department,
+            is_staff=True, is_superuser=False
+        ).values_list('id', flat=True)
+        
+        context['pending'] = StoreRequest.objects.filter(
+            requested_by__in=dept_teacher_ids, status='pending_hod'
+        ).prefetch_related('items').select_related('requested_by')
+
+        context['reviewed'] = StoreRequest.objects.filter(
+            requested_by__in=dept_teacher_ids
+        ).exclude(status='pending_hod').prefetch_related('items').select_related(
+            'requested_by', 'hod_approved_by', 'assigned_to__user', 'fulfilled_by__user'
+        )
+        
+    return render(request, 'my_store_requests.html', context)

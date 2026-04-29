@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="header-title mb-0">🔧 My Store Tasks</h2>
+        <p class="text-muted small mb-0">Welcome, {{ sp.user.get_full_name|default:sp.user.username }}
+            <span class="badge bg-primary ms-1">{{ sp.get_role_display }}</span></p>
+    </div>
+</div>
+
+<!-- Active Tasks -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex align-items-center gap-2"
+         style="background:linear-gradient(90deg,#4c1d95,#7c3aed);color:#fff;">
+        <i class="fas fa-tasks fa-lg"></i>
+        <h5 class="mb-0">Active Tasks</h5>
+        <span class="badge bg-warning text-dark ms-auto">{{ active.count }} task{{ active.count|pluralize }}</span>
+    </div>
+    <div class="card-body p-0">
+        {% if active %}
+        <div class="accordion" id="activeAcc">
+        {% for req in active %}
+        <div class="accordion-item border-0 border-bottom">
+            <button class="accordion-button collapsed py-3 px-4" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#t{{ req.id }}">
+                <div class="row w-100 align-items-center g-2">
+                    <div class="col-md-5 fw-bold">
+                        <i class="fas fa-user me-1 text-primary"></i>
+                        {{ req.requested_by.get_full_name|default:req.requested_by.username }}
+                        <div class="fw-normal small">{{ req.title }}</div>
+                    </div>
+                    <div class="col-md-3 text-muted small">{{ req.assigned_at|date:"d M Y"|default:"" }}</div>
+                    <div class="col-md-4 text-end">
+                        <span class="badge bg-secondary">{{ req.total_items }} items</span>
+                    </div>
+                </div>
+            </button>
+            <div id="t{{ req.id }}" class="accordion-collapse collapse">
+                <div class="accordion-body px-4">
+                    <form method="post" action="{% url 'store_staff_respond' req.id %}">
+                        {% csrf_token %}
+
+                        <h6 class="fw-bold mb-2">Items — Enter Quantity Provided</h6>
+                        <div class="table-responsive mb-3">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-center">Requested</th>
+                                    <th class="text-center">Providing</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in req.items.all %}
+                            <tr>
+                                <td class="fw-semibold">{{ item.item_name }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">{{ item.quantity_requested }}</span>
+                                </td>
+                                <td class="text-center" style="width:120px;">
+                                    <input type="number" name="qty_provided_{{ item.id }}"
+                                           value="{{ item.quantity_provided }}"
+                                           min="0" max="{{ item.quantity_requested }}"
+                                           class="form-control form-control-sm text-center"
+                                           style="width:75px; margin:auto;">
+                                </td>
+                                <td class="text-center">
+                                    {% if item.is_fulfilled %}
+                                    <span class="badge bg-success">✓ Full</span>
+                                    {% elif item.quantity_provided > 0 %}
+                                    <span class="badge bg-warning text-dark">{{ item.fulfillment_pct }}%</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-semibold">Expected Delivery Date</label>
+                                <input type="date" name="expected_delivery" class="form-control form-control-sm"
+                                       value="{{ req.expected_delivery|date:'Y-m-d'|default:'' }}"
+                                       min="{{ today }}">
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label small fw-semibold">Response / Message to Teacher</label>
+                                <textarea name="staff_response" class="form-control form-control-sm" rows="2"
+                                          placeholder="e.g. 3 out of 5 markers available, rest by Friday…">{{ req.staff_response }}</textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="fas fa-paper-plane me-1"></i> Submit Response
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+            <p class="mb-0">No active tasks right now!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Completed Tasks -->
+<div class="card shadow-sm">
+    <div class="card-header" style="background:rgba(255,255,255,0.05);">
+        <h5 class="mb-0">✅ Completed Tasks</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if completed %}
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th class="ps-4">Teacher</th><th>Title</th><th>Progress</th><th>Delivery</th><th>Message</th></tr></thead>
+            <tbody>
+            {% for req in completed %}
+            <tr>
+                <td class="ps-4 fw-semibold">{{ req.requested_by.username }}</td>
+                <td>{{ req.title }}</td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress" style="height:6px;width:60px;">
+                            <div class="progress-bar {% if req.fulfillment_pct == 100 %}bg-success{% else %}bg-warning{% endif %}"
+                                 style="width:{{ req.fulfillment_pct }}%"></div>
+                        </div>
+                        <small>{{ req.fulfillment_pct }}%</small>
+                    </div>
+                </td>
+                <td class="text-muted small">{{ req.expected_delivery|default:"—" }}</td>
+                <td class="text-muted small">{{ req.staff_response|truncatechars:50|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted"><p class="mb-0">No completed tasks yet.</p></div>
+        {% endif %}
+    </div>
+</div>
+
+{% with today=today %}{% endwith %}
+<script>
+// Set today for min date attribute
+document.querySelectorAll('input[type=date]').forEach(el => {
+    if (!el.value) el.min = new Date().toISOString().split('T')[0];
+});
+</script>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+.status-pill { font-size:.78rem; padding:4px 12px; border-radius:20px; font-weight:600; }
+.sp-pending_store { background:#3b82f622; color:#2563eb; border:1px solid #3b82f655; }
+.sp-assigned      { background:#8b5cf622; color:#7c3aed; border:1px solid #8b5cf655; }
+.sp-partial       { background:#06b6d422; color:#0891b2; border:1px solid #06b6d455; }
+.sp-fulfilled     { background:#10b98122; color:#059669; border:1px solid #10b98155; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="header-title mb-0">🏪 Store Head Dashboard</h2>
+        <p class="text-muted small mb-0">Assign incoming requests to store staff</p>
+    </div>
+</div>
+
+<!-- Incoming from HOD -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex align-items-center gap-2"
+         style="background:linear-gradient(90deg,#1e3a5f,#2563eb);color:#fff;">
+        <i class="fas fa-inbox fa-lg"></i>
+        <h5 class="mb-0">Incoming — Approved by HOD</h5>
+        <span class="badge bg-warning text-dark ms-auto">{{ pending_store.count }} new</span>
+    </div>
+    <div class="card-body p-0">
+        {% if pending_store %}
+        <div class="accordion" id="incomingAcc">
+        {% for req in pending_store %}
+        <div class="accordion-item border-0 border-bottom">
+            <button class="accordion-button collapsed py-3 px-4" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#ps{{ req.id }}">
+                <div class="row w-100 align-items-center g-2">
+                    <div class="col-md-4 fw-bold">
+                        <i class="fas fa-user me-1 text-primary"></i>
+                        {{ req.requested_by.get_full_name|default:req.requested_by.username }}
+                        <div class="fw-normal text-muted small">{{ req.title }}</div>
+                    </div>
+                    <div class="col-md-3 text-muted small">
+                        HOD: {{ req.hod_approved_by.username|default:"—" }}
+                        {% if req.hod_remarks %}<br><em>{{ req.hod_remarks|truncatechars:40 }}</em>{% endif %}
+                    </div>
+                    <div class="col-md-3 text-muted small">{{ req.created_at|date:"d M Y" }}</div>
+                    <div class="col-md-2 text-end">
+                        <span class="badge bg-secondary">{{ req.total_items }} items</span>
+                    </div>
+                </div>
+            </button>
+            <div id="ps{{ req.id }}" class="accordion-collapse collapse">
+                <div class="accordion-body px-4">
+                    <table class="table table-sm mb-3">
+                        <thead><tr><th>Item</th><th class="text-center">Requested Qty</th></tr></thead>
+                        <tbody>
+                        {% for item in req.items.all %}
+                        <tr><td>{{ item.item_name }}</td>
+                            <td class="text-center"><span class="badge bg-secondary">{{ item.quantity_requested }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if req.notes %}<div class="alert alert-light py-2 mb-3"><small>{{ req.notes }}</small></div>{% endif %}
+
+                    <!-- Assign Form -->
+                    <form method="post" action="{% url 'assign_store_request' req.id %}" class="d-flex align-items-end gap-3">
+                        {% csrf_token %}
+                        <div class="flex-grow-1">
+                            <label class="form-label small fw-semibold mb-1">Assign to Store Staff</label>
+                            <select name="staff_id" class="form-select form-select-sm" required>
+                                <option value="">— Select Staff Member —</option>
+                                {% for s in all_staff %}
+                                <option value="{{ s.id }}">{{ s.user.get_full_name|default:s.user.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex-grow-1">
+                            <label class="form-label small fw-semibold mb-1">Remarks (optional)</label>
+                            <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Any note…">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-paper-plane me-1"></i>Assign
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-inbox fa-2x mb-2"></i>
+            <p class="mb-0">No new requests pending assignment.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Assigned -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header" style="background:linear-gradient(90deg,#4c1d95,#7c3aed);color:#fff;">
+        <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Assigned to Staff ({{ assigned.count }})</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if assigned %}
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark" style="--bs-table-bg:#0d1b2e;">
+                <tr><th class="ps-4">Teacher</th><th>Title</th><th>Items</th><th>Assigned To</th><th>Progress</th></tr>
+            </thead>
+            <tbody>
+            {% for req in assigned %}
+            <tr>
+                <td class="ps-4 fw-semibold">{{ req.requested_by.username }}</td>
+                <td>{{ req.title }}</td>
+                <td class="text-center">{{ req.total_items }}</td>
+                <td>
+                    {% if req.assigned_to %}
+                    <span class="badge bg-purple" style="background:#7c3aed;">{{ req.assigned_to.user.username }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    <div class="progress" style="height:6px;width:80px;">
+                        <div class="progress-bar bg-info" style="width:{{ req.fulfillment_pct }}%"></div>
+                    </div>
+                    <small class="text-muted">{{ req.fulfillment_pct }}%</small>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted"><p class="mb-0">No assigned requests.</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Done -->
+<div class="card shadow-sm">
+    <div class="card-header" style="background:rgba(255,255,255,0.05);">
+        <h5 class="mb-0">📁 Recently Completed</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if done %}
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th class="ps-4">Teacher</th><th>Title</th><th>Staff</th><th>Delivery</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for req in done %}
+            <tr>
+                <td class="ps-4 fw-semibold">{{ req.requested_by.username }}</td>
+                <td>{{ req.title }}</td>
+                <td>{{ req.assigned_to.user.username|default:"—" }}</td>
+                <td class="text-muted small">{{ req.expected_delivery|default:"—" }}</td>
+                <td>
+                    <span class="status-pill sp-{{ req.status }}">
+                        {% if req.status == 'fulfilled' %}✅ Fulfilled
+                        {% elif req.status == 'partial' %}🔵 Partial
+                        {% else %}❌ Rejected{% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted"><p class="mb-0">No completed requests yet.</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
