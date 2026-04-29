@@ -1,45 +1,123 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-md-12">
-        <h2 class="header-title">Manage Teachers</h2>
+
+<!-- Page Header + Department Filter Bar -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-6">
+        <h2 class="header-title mb-0">Manage Teachers</h2>
+        <p class="text-muted small mb-0">
+            {{ teachers|length }} teacher{{ teachers|length|pluralize }} found
+            {% if selected_dept %}in <strong>{{ selected_dept }}</strong>{% endif %}
+        </p>
+    </div>
+    <div class="col-md-6">
+        <form method="get" class="d-flex gap-2 justify-content-md-end">
+            <select name="department" class="form-select w-auto" onchange="this.form.submit()"
+                    style="min-width:220px;">
+                <option value="">🏫 All Departments</option>
+                {% for code, label in dept_choices %}
+                    <option value="{{ code }}"
+                        {% if selected_dept == code %}selected{% endif %}>
+                        {{ code }} — {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+            {% if selected_dept %}
+                <a href="{% url 'manage_teachers' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            {% endif %}
+        </form>
     </div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Date Joined</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for teacher in teachers %}
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="bg-light rounded-circle p-2 me-3">
-                                    <i class="fas fa-chalkboard-teacher text-primary"></i>
+<!-- Department-wise Grouped Tables -->
+{% if grouped %}
+    {% for dept_label, dept_teachers in grouped.items %}
+    <div class="card shadow-sm mb-4">
+        <!-- Department Header -->
+        <div class="card-header d-flex align-items-center justify-content-between"
+             style="background: linear-gradient(90deg, #1a2a4a 0%, #2563eb22 100%); border-bottom: 2px solid #2563eb44;">
+            <div class="d-flex align-items-center gap-2">
+                <span style="background:#2563eb; border-radius:8px; padding:4px 12px; font-size:0.8rem; font-weight:700; color:#fff; letter-spacing:1px;">
+                    {{ dept_label }}
+                </span>
+                <span class="text-muted small">
+                    {{ dept_teachers|length }} teacher{{ dept_teachers|length|pluralize }}
+                </span>
+            </div>
+            <a href="{% url 'add_teacher' %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus me-1"></i>Add Teacher
+            </a>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark" style="--bs-table-bg: #0d1b2e;">
+                        <tr>
+                            <th class="ps-4">Username</th>
+                            <th>Designation</th>
+                            <th>Email</th>
+                            <th>Date Joined</th>
+                            <th class="text-center pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in dept_teachers %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle me-3 d-flex align-items-center justify-content-center"
+                                         style="width:36px; height:36px; background:rgba(37,99,235,0.15);">
+                                        <i class="fas fa-chalkboard-teacher text-primary" style="font-size:0.85rem;"></i>
+                                    </div>
+                                    <span class="fw-bold">{{ teacher.username }}</span>
                                 </div>
-                                <span class="fw-bold">{{ teacher.username }}</span>
-                            </div>
-                        </td>
-                        <td>{{ teacher.email|default:"-" }}</td>
-                        <td>{{ teacher.date_joined|date:"M d, Y" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="3" class="text-center text-muted">No teachers found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td>
+                                {% if teacher.teacher_profile.designation == 'hod' %}
+                                    <span class="badge"
+                                          style="background:#d4a017; color:#fff; font-size:0.82rem; padding:5px 12px; border-radius:20px;">
+                                        <i class="fas fa-star me-1"></i>HOD
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-primary"
+                                          style="font-size:0.82rem; padding:5px 12px; border-radius:20px;">
+                                        <i class="fas fa-user-tie me-1"></i>Asst. Prof
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted">{{ teacher.email|default:"—" }}</td>
+                            <td class="text-muted">{{ teacher.date_joined|date:"M d, Y" }}</td>
+                            <td class="text-center pe-4">
+                                <a href="{% url 'edit_teacher' teacher.id %}"
+                                   class="btn btn-sm btn-warning" title="Edit">
+                                    <i class="fas fa-pen me-1"></i>Edit
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
+    {% endfor %}
+
+{% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No teachers found
+                {% if selected_dept %}in the <strong>{{ selected_dept }}</strong> department{% endif %}.
+            </p>
+            <a href="{% url 'add_teacher' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Add First Teacher
+            </a>
+        </div>
+    </div>
+{% endif %}
+
 {% endblock %}

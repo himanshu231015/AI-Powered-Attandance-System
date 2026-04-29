@@ -1,0 +1,378 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+.store-badge-pending   { background:#f59e0b; color:#fff; }
+.store-badge-partial   { background:#3b82f6; color:#fff; }
+.store-badge-fulfilled { background:#10b981; color:#fff; }
+.store-badge-rejected  { background:#ef4444; color:#fff; }
+.progress-thin { height:6px; border-radius:4px; }
+.staff-card { border-radius:14px; border:1px solid rgba(255,255,255,0.08); transition:transform .2s; }
+.staff-card:hover { transform:translateY(-2px); }
+.req-row-header { cursor:pointer; }
+.req-row-header:hover { background:rgba(37,99,235,0.07) !important; }
+.item-table thead th { font-size:.78rem; text-transform:uppercase; letter-spacing:.5px; }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="header-title mb-0">🏪 Store Management</h2>
+        <p class="text-muted small mb-0">Manage store staff and track all item requests</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+            <i class="fas fa-user-plus me-1"></i> Add Store Staff
+        </button>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- ─── Store Staff Section ──────────────────────────────── -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex align-items-center gap-2"
+         style="background:linear-gradient(90deg,#1e3a5f,#1d4ed8); color:#fff; border-radius:14px 14px 0 0;">
+        <i class="fas fa-id-badge fa-lg"></i>
+        <h5 class="mb-0">Store Staff</h5>
+        <span class="badge bg-light text-dark ms-auto">{{ store_staff.count }} member{{ store_staff.count|pluralize }}</span>
+    </div>
+    <div class="card-body">
+        {% if store_staff %}
+        <div class="row g-3">
+            {% for s in store_staff %}
+            <div class="col-md-4">
+                <div class="card staff-card p-3 h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center"
+                             style="width:46px;height:46px;background:{% if s.role == 'head' %}linear-gradient(135deg,#d4a017,#f59e0b){% else %}linear-gradient(135deg,#1d4ed8,#3b82f6){% endif %};">
+                            <i class="fas {% if s.role == 'head' %}fa-crown{% else %}fa-user{% endif %} text-white"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">{{ s.user.get_full_name|default:s.user.username }}</div>
+                            <small class="text-muted">{{ s.user.email|default:"—" }}</small>
+                            <div class="mt-1">
+                                <span class="badge {% if s.role == 'head' %}bg-warning text-dark{% else %}bg-primary{% endif %}" style="font-size:.75rem;">
+                                    {% if s.role == 'head' %}👑 Store Head{% else %}🧑‍💼 Store Staff{% endif %}
+                                </span>
+                                {% if s.department %}
+                                <span class="badge bg-secondary ms-1" style="font-size:.72rem;">{{ s.department }}</span>
+                                {% endif %}
+                            </div>
+                            {% if s.phone %}<div class="text-muted small mt-1"><i class="fas fa-phone me-1"></i>{{ s.phone }}</div>{% endif %}
+                        </div>
+                        <div class="d-flex flex-column gap-1">
+                            <a href="{% url 'edit_store_staff' s.id %}"
+                               class="btn btn-sm btn-outline-warning" title="Edit">
+                                <i class="fas fa-pen"></i>
+                            </a>
+                            <form method="post" action="{% url 'delete_store_staff' s.id %}"
+                                  onsubmit="return confirm('Remove {{ s.user.username }} from store staff?');">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" title="Remove">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="fas fa-users-slash fa-2x mb-2"></i>
+            <p class="mb-0">No store staff added yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ─── Requests Section ──────────────────────────────────── -->
+<div class="card shadow-sm">
+    <div class="card-header d-flex align-items-center gap-3 flex-wrap"
+         style="background:linear-gradient(90deg,#064e3b,#059669); color:#fff; border-radius:14px 14px 0 0; padding:1rem 1.5rem;">
+        <div class="d-flex align-items-center gap-2 flex-grow-1">
+            <i class="fas fa-boxes fa-lg"></i>
+            <h5 class="mb-0">Store Requests</h5>
+            <span class="badge bg-light text-dark ms-1">{{ store_requests.count }} total</span>
+        </div>
+        <!-- Status Filter -->
+        <form method="get" class="d-flex align-items-center gap-2">
+            <select name="status" class="form-select form-select-sm" style="min-width:170px;"
+                    onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                {% for val, label in STATUS_CHOICES %}
+                <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            {% if status_filter %}
+            <a href="{% url 'admin_store_dashboard' %}" class="btn btn-sm btn-light">
+                <i class="fas fa-times"></i>
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="card-body p-0">
+        {% if store_requests %}
+        <div class="accordion" id="requestsAccordion">
+            {% for req in store_requests %}
+            <div class="accordion-item border-0 border-bottom">
+                <!-- Request Header Row -->
+                <div class="accordion-header">
+                    <button class="accordion-button collapsed py-3 px-4" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#req{{ req.id }}">
+                        <div class="row w-100 align-items-center g-2">
+                            <!-- Requester -->
+                            <div class="col-md-3 d-flex align-items-center gap-2">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width:34px;height:34px;background:rgba(37,99,235,0.15);flex-shrink:0;">
+                                    <i class="fas fa-user text-primary" style="font-size:.8rem;"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold" style="font-size:.9rem;">{{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
+                                    <small class="text-muted">{{ req.created_at|date:"d M Y, H:i" }}</small>
+                                </div>
+                            </div>
+                            <!-- Title -->
+                            <div class="col-md-3">
+                                <span class="fw-semibold">{{ req.title }}</span>
+                                {% if req.notes %}<br><small class="text-muted">{{ req.notes|truncatechars:40 }}</small>{% endif %}
+                            </div>
+                            <!-- Items count + progress -->
+                            <div class="col-md-3">
+                                <small class="text-muted d-block mb-1">
+                                    {{ req.fulfilled_items_count }}/{{ req.total_items }} items fulfilled
+                                </small>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar {% if req.fulfillment_pct == 100 %}bg-success{% elif req.fulfillment_pct > 0 %}bg-warning{% else %}bg-secondary{% endif %}"
+                                         style="width:{{ req.fulfillment_pct }}%"></div>
+                                </div>
+                            </div>
+                            <!-- Status badge -->
+                            <div class="col-md-3 text-md-end">
+                                <span class="badge rounded-pill store-badge-{{ req.status }}" style="font-size:.8rem;padding:6px 14px;">
+                                    {% if req.status == 'pending'   %}⏳ Pending
+                                    {% elif req.status == 'partial'   %}🔵 Partial
+                                    {% elif req.status == 'fulfilled' %}✅ Fulfilled
+                                    {% else %}❌ Rejected{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Expanded Detail + Update Form -->
+                <div id="req{{ req.id }}" class="accordion-collapse collapse"
+                     data-bs-parent="#requestsAccordion">
+                    <div class="accordion-body px-4 py-3" style="background:rgba(255,255,255,0.02);">
+                        <form method="post" action="{% url 'update_store_request' req.id %}">
+                            {% csrf_token %}
+
+                            <!-- Item Table -->
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm align-middle item-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Item Name</th>
+                                            <th class="text-center">Requested Qty</th>
+                                            <th class="text-center">Provided Qty</th>
+                                            <th class="text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in req.items.all %}
+                                        <tr>
+                                            <td class="fw-semibold">{{ item.item_name }}</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-secondary">{{ item.quantity_requested }}</span>
+                                            </td>
+                                            <td class="text-center" style="width:140px;">
+                                                <input type="number" name="qty_provided_{{ item.id }}"
+                                                       value="{{ item.quantity_provided }}"
+                                                       min="0" max="{{ item.quantity_requested }}"
+                                                       class="form-control form-control-sm text-center"
+                                                       style="width:80px; margin:auto;">
+                                            </td>
+                                            <td class="text-center">
+                                                {% if item.is_fulfilled %}
+                                                    <span class="badge bg-success">✓ Fulfilled</span>
+                                                {% elif item.quantity_provided > 0 %}
+                                                    <span class="badge bg-warning text-dark">
+                                                        {{ item.fulfillment_pct }}% done
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Pending</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="4" class="text-muted text-center">No items listed.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Bottom Controls -->
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Fulfilled By (Store Staff)</label>
+                                    <select name="fulfilled_by" class="form-select form-select-sm">
+                                        <option value="">— Select Staff —</option>
+                                        {% for s in store_staff %}
+                                        <option value="{{ s.id }}"
+                                            {% if req.fulfilled_by and req.fulfilled_by.id == s.id %}selected{% endif %}>
+                                            {{ s.user.username }} ({{ s.get_role_display }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">Remarks</label>
+                                    <input type="text" name="remarks" class="form-control form-control-sm"
+                                           placeholder="Optional note…" value="{{ req.remarks }}">
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                        <i class="fas fa-save me-1"></i> Update Fulfilment
+                                    </button>
+                                </div>
+                            </div>
+
+                            {% if req.fulfilled_by %}
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    Last updated by: <strong>{{ req.fulfilled_by.user.username }}</strong>
+                                    on {{ req.updated_at|date:"d M Y, H:i" }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-inbox fa-3x mb-3"></i>
+            <p class="mb-0">No store requests found{% if status_filter %} for this status{% endif %}.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- ─── Add Store Staff Modal ──────────────────────────────── -->
+<div class="modal fade" id="addStaffModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:linear-gradient(90deg,#1e3a5f,#1d4ed8);color:#fff;">
+        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Add Store Staff</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Tab Toggle -->
+        <ul class="nav nav-tabs mb-3" id="addStaffTab">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#existingUser">
+              <i class="fas fa-user-check me-1"></i>Existing User
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#newUser">
+              <i class="fas fa-user-plus me-1"></i>Create New User
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- Existing User -->
+          <div class="tab-pane fade show active" id="existingUser">
+            <form method="post" action="{% url 'add_store_staff' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_existing">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Select User</label>
+                  <select name="user_id" class="form-select" required>
+                    <option value="">— Choose a user —</option>
+                    {% for u in all_users %}
+                    <option value="{{ u.id }}">{{ u.username }} ({{ u.email|default:"no email" }})</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Role</label>
+                  <select name="role" class="form-select" required>
+                    <option value="staff">Store Staff</option>
+                    <option value="head">Store Head</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Phone (optional)</label>
+                  <input type="text" name="phone" class="form-control" placeholder="e.g. 9876543210">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Department (optional)</label>
+                  <input type="text" name="department" class="form-control" placeholder="e.g. Central Store">
+                </div>
+              </div>
+              <div class="text-end mt-3">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-plus me-1"></i> Add Staff
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- New User -->
+          <div class="tab-pane fade" id="newUser">
+            <form method="post" action="{% url 'add_store_staff' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="create_new">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Username</label>
+                  <input type="text" name="username" class="form-control" placeholder="e.g. store01" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Email</label>
+                  <input type="email" name="email" class="form-control" placeholder="store@college.ac.in">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Password</label>
+                  <input type="password" name="password" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Role</label>
+                  <select name="role" class="form-select" required>
+                    <option value="staff">Store Staff</option>
+                    <option value="head">Store Head</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Phone (optional)</label>
+                  <input type="text" name="phone" class="form-control">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Department (optional)</label>
+                  <input type="text" name="department" class="form-control" placeholder="e.g. Central Store">
+                </div>
+              </div>
+              <div class="text-end mt-3">
+                <button type="submit" class="btn btn-success">
+                  <i class="fas fa-user-plus me-1"></i> Create & Add Staff
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

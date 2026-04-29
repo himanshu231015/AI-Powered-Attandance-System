@@ -27,14 +27,9 @@
                             required value="{{ request.GET.section|default:'' }}">
                     </div>
                     <div class="col-md-3 d-flex align-items-end">
-                        <div class="btn-group w-100" role="group">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-search me-2"></i>Show
-                            </button>
-                            <button type="submit" class="btn btn-success" formaction="{% url 'download_attendance' %}">
-                                <i class="fas fa-file-excel me-2"></i>Download
-                            </button>
-                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>Show
+                        </button>
                     </div>
                 </form>
             </div>

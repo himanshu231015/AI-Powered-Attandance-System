@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-7">
         <div class="card shadow-lg">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0"><i class="fas fa-chalkboard-teacher me-2"></i>Add New Teacher</h4>
@@ -10,22 +10,51 @@
             <div class="card-body p-4">
                 <form method="post">
                     {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
+
+                    <div class="row g-3">
+                        <!-- Username -->
+                        <div class="col-md-6">
+                            <label for="username" class="form-label fw-semibold">Username</label>
+                            <input type="text" class="form-control" id="username" name="username"
+                                   placeholder="e.g. TEA010" required>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="col-md-6">
+                            <label for="email" class="form-label fw-semibold">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email"
+                                   placeholder="teacher@college.ac.in" required>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="col-md-6">
+                            <label for="password" class="form-label fw-semibold">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+
+                        <!-- Designation -->
+                        <div class="col-md-6">
+                            <label for="designation" class="form-label fw-semibold">Designation</label>
+                            <select class="form-select" id="designation" name="designation" required>
+                                <option value="asst_prof" selected>Assistant Professor</option>
+                                <option value="hod">HOD (Head of Department)</option>
+                            </select>
+                        </div>
+
+                        <!-- Department -->
+                        <div class="col-12">
+                            <label for="department" class="form-label fw-semibold">
+                                <i class="fas fa-building me-1 text-primary"></i>Department
+                            </label>
+                            <select class="form-select" id="department" name="department" required>
+                                {% for code, label in dept_choices %}
+                                    <option value="{{ code }}">{{ code }} — {{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-
-                    <div class="d-grid gap-2">
+                    <div class="d-grid mt-4">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-plus-circle me-2"></i>Add Teacher
                         </button>

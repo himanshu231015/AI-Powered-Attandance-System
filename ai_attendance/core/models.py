@@ -56,6 +56,41 @@ class Teacher(User):
         verbose_name = 'Teacher'
         verbose_name_plural = 'Teachers'
 
+class TeacherProfile(models.Model):
+    DESIGNATION_CHOICES = [
+        ('hod', 'HOD'),
+        ('asst_prof', 'Assistant Professor'),
+    ]
+    DEPARTMENT_CHOICES = [
+        ('CSE',  'Computer Science & Engineering'),
+        ('IT',   'Information Technology'),
+        ('ECE',  'Electronics & Communication'),
+        ('EE',   'Electrical Engineering'),
+        ('ME',   'Mechanical Engineering'),
+        ('CE',   'Civil Engineering'),
+        ('AIDS', 'AI & Data Science'),
+        ('AIML', 'AI & Machine Learning'),
+        ('other','Other'),
+    ]
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='teacher_profile'
+    )
+    designation = models.CharField(
+        max_length=20,
+        choices=DESIGNATION_CHOICES,
+        default='asst_prof'
+    )
+    department = models.CharField(
+        max_length=10,
+        choices=DEPARTMENT_CHOICES,
+        default='CSE'
+    )
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_designation_display()} ({self.department})"
+
 class Admin(User):
     class Meta:
         proxy = True
@@ -174,3 +209,112 @@ class AccessoryRequest(models.Model):
 
     def __str__(self):
         return f"{self.teacher.username} - {self.get_accessory_type_display()} x{self.quantity} [{self.status}]"
+
+# ─────────────────────────────────────────────
+#  Store Management
+# ─────────────────────────────────────────────
+
+class StoreStaff(models.Model):
+    ROLE_CHOICES = [
+        ('head',  'Store Head'),
+        ('staff', 'Store Staff'),
+    ]
+    user       = models.OneToOneField(User, on_delete=models.CASCADE, related_name='store_profile')
+    role       = models.CharField(max_length=10, choices=ROLE_CHOICES, default='staff')
+    department = models.CharField(max_length=100, blank=True)
+    phone      = models.CharField(max_length=15, blank=True)
+
+    class Meta:
+        verbose_name        = 'Store Staff'
+        verbose_name_plural = 'Store Staff'
+
+    def __str__(self):
+        name = self.user.get_full_name() or self.user.username
+        return f"{name} ({self.get_role_display()})"
+
+
+class StoreRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending_hod',   'Awaiting HOD Approval'),
+        ('hod_rejected',  'Rejected by HOD'),
+        ('pending_store', 'Awaiting Store Head'),
+        ('assigned',      'Assigned to Staff'),
+        ('partial',       'Partially Fulfilled'),
+        ('fulfilled',     'Fully Fulfilled'),
+        ('rejected',      'Rejected by Store'),
+    ]
+
+    # Basic info
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='store_requests')
+    title        = models.CharField(max_length=200)
+    notes        = models.TextField(blank=True)
+    status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_hod')
+
+    # HOD approval step
+    hod_approved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hod_approved_requests'
+    )
+    hod_approved_at = models.DateTimeField(null=True, blank=True)
+    hod_remarks     = models.TextField(blank=True)
+
+    # Store fulfilment step
+    fulfilled_by = models.ForeignKey(
+        StoreStaff, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='fulfilled_requests'
+    )
+    assigned_to  = models.ForeignKey(
+        StoreStaff, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='assigned_requests'
+    )
+    assigned_at       = models.DateTimeField(null=True, blank=True)
+    expected_delivery = models.DateField(null=True, blank=True)
+    staff_response    = models.TextField(blank=True, help_text='Store staff response/notes')
+    remarks           = models.TextField(blank=True, help_text='Store Head remarks')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.requested_by.username} – {self.title} [{self.status}]"
+
+    @property
+    def total_items(self):
+        return self.items.count()
+
+    @property
+    def fulfilled_items_count(self):
+        return sum(1 for item in self.items.all() if item.is_fulfilled)
+
+    @property
+    def fulfillment_pct(self):
+        total = self.total_items
+        if total == 0:
+            return 0
+        return int((self.fulfilled_items_count / total) * 100)
+
+    def status_label(self):
+        return dict(self.STATUS_CHOICES).get(self.status, self.status)
+
+
+class StoreRequestItem(models.Model):
+    request            = models.ForeignKey(StoreRequest, on_delete=models.CASCADE, related_name='items')
+    item_name          = models.CharField(max_length=200)
+    quantity_requested = models.PositiveIntegerField(default=1)
+    quantity_provided  = models.PositiveIntegerField(default=0)
+
+    @property
+    def is_fulfilled(self):
+        return self.quantity_provided >= self.quantity_requested
+
+    @property
+    def fulfillment_pct(self):
+        if self.quantity_requested == 0:
+            return 100
+        return min(100, int((self.quantity_provided / self.quantity_requested) * 100))
+
+    def __str__(self):
+        return f"{self.item_name}: {self.quantity_provided}/{self.quantity_requested}"

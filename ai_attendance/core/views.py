@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
-from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest
+from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest, TeacherProfile, StoreStaff, StoreRequest, StoreRequestItem
 from .utils import train_model, identify_faces, detect_and_crop_face, get_existing_attendance_record
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -547,26 +547,35 @@ def process_live_frame(request):
 
 @user_passes_test(lambda u: u.is_superuser)
 def add_teacher(request):
+    from .models import TeacherProfile
+    dept_choices = TeacherProfile.DEPARTMENT_CHOICES
     if request.method == 'POST':
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        
+        username    = request.POST.get('username')
+        email       = request.POST.get('email')
+        password    = request.POST.get('password')
+        designation = request.POST.get('designation', 'asst_prof')
+        department  = request.POST.get('department', 'CSE')
+
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
-            return redirect('add_teacher')
-            
+            return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
+
         try:
             user = User.objects.create_user(username=username, email=email, password=password)
             user.is_staff = True
             user.save()
-            messages.success(request, f"Teacher {username} added successfully!")
+            TeacherProfile.objects.create(
+                user=user,
+                designation=designation,
+                department=department
+            )
+            messages.success(request, f"Teacher '{username}' added to {department} department!")
             return redirect('admin_dashboard')
         except Exception as e:
             messages.error(request, f"Error adding teacher: {e}")
-            return redirect('add_teacher')
-            
-    return render(request, 'add_teacher.html')
+            return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
+
+    return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
 
 @user_passes_test(lambda u: u.is_superuser)
 def add_student(request):
@@ -818,8 +827,83 @@ def edit_student(request, student_id):
 
 @user_passes_test(lambda u: u.is_superuser)
 def manage_teachers(request):
-    teachers = User.objects.filter(is_staff=True, is_superuser=False).order_by('-date_joined')
-    return render(request, 'manage_teachers.html', {'teachers': teachers})
+    from .models import TeacherProfile
+    dept_choices = TeacherProfile.DEPARTMENT_CHOICES
+
+    # Filter by department if query param provided
+    selected_dept = request.GET.get('department', '')
+
+    teachers_qs = User.objects.filter(is_staff=True, is_superuser=False).order_by('username')
+
+    # Ensure every teacher has a TeacherProfile
+    for t in teachers_qs:
+        TeacherProfile.objects.get_or_create(user=t)
+
+    if selected_dept:
+        teachers_qs = teachers_qs.filter(teacher_profile__department=selected_dept)
+
+    # Group teachers by department for display
+    from collections import OrderedDict
+    dept_label_map = dict(dept_choices)
+    grouped = OrderedDict()
+    for t in teachers_qs:
+        dept_key = t.teacher_profile.department
+        dept_label = dept_label_map.get(dept_key, dept_key)
+        grouped.setdefault(dept_label, []).append(t)
+
+    return render(request, 'manage_teachers.html', {
+        'teachers':      teachers_qs,
+        'grouped':       grouped,
+        'dept_choices':  dept_choices,
+        'selected_dept': selected_dept,
+    })
+
+@user_passes_test(lambda u: u.is_superuser)
+def edit_teacher(request, teacher_id):
+    from .models import TeacherProfile
+    teacher = get_object_or_404(User, id=teacher_id, is_staff=True, is_superuser=False)
+    profile, _ = TeacherProfile.objects.get_or_create(user=teacher)
+    dept_choices = TeacherProfile.DEPARTMENT_CHOICES
+
+    if request.method == 'POST':
+        username    = request.POST.get('username', '').strip()
+        email       = request.POST.get('email', '').strip()
+        password    = request.POST.get('password', '').strip()
+        designation = request.POST.get('designation', 'asst_prof')
+        department  = request.POST.get('department', 'CSE')
+
+        if User.objects.filter(username=username).exclude(pk=teacher.pk).exists():
+            messages.error(request, "Username already taken by another user.")
+            return redirect('edit_teacher', teacher_id=teacher_id)
+
+        teacher.username = username
+        teacher.email    = email
+        if password:
+            teacher.set_password(password)
+        teacher.save()
+
+        profile.designation = designation
+        profile.department  = department
+        profile.save()
+
+        messages.success(request, f"Teacher '{username}' updated successfully!")
+        return redirect('manage_teachers')
+
+    return render(request, 'edit_teacher.html', {
+        'teacher':      teacher,
+        'profile':      profile,
+        'dept_choices': dept_choices,
+    })
+
+@user_passes_test(lambda u: u.is_superuser)
+def delete_teacher(request, teacher_id):
+    if request.method == 'POST':
+        teacher = get_object_or_404(User, id=teacher_id, is_staff=True, is_superuser=False)
+        name = teacher.username
+        teacher.delete()
+        messages.success(request, f"Teacher '{name}' deleted successfully.")
+    return redirect('manage_teachers')
+
 @user_passes_test(lambda u: u.is_superuser)
 def admin_dashboard(request):
     total_students = Student.objects.count()
@@ -1341,3 +1425,192 @@ def mark_notification_read(request, notif_id):
         except Notification.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Notification not found'}, status=404)
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
+# ═══════════════════════════════════════════════
+#  STORE MANAGEMENT VIEWS
+# ═══════════════════════════════════════════════
+
+@user_passes_test(lambda u: u.is_superuser)
+def admin_store_dashboard(request):
+    """Admin: Full store management — staff + all requests with item details."""
+    store_staff   = StoreStaff.objects.select_related('user').order_by('role', 'user__username')
+    status_filter = request.GET.get('status', '')
+
+    requests_qs = StoreRequest.objects.select_related(
+        'requested_by', 'fulfilled_by__user'
+    ).prefetch_related('items').all()
+
+    if status_filter:
+        requests_qs = requests_qs.filter(status=status_filter)
+
+    # Only show users who are NOT teachers, NOT students, NOT superusers, NOT already store staff
+    from django.db.models import Q
+    all_users = User.objects.filter(is_active=True).exclude(
+        id__in=StoreStaff.objects.values_list('user_id', flat=True)
+    ).exclude(
+        Q(is_staff=True) | Q(is_superuser=True) | Q(student__isnull=False)
+    ).order_by('username')
+
+    context = {
+        'store_staff':    store_staff,
+        'store_requests': requests_qs,
+        'status_filter':  status_filter,
+        'STATUS_CHOICES': StoreRequest.STATUS_CHOICES,
+        'all_users':      all_users,
+    }
+    return render(request, 'store_dashboard.html', context)
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def add_store_staff(request):
+    """Admin: Add a user as Store Head or Store Staff."""
+    if request.method == 'POST':
+        action     = request.POST.get('action')
+        role       = request.POST.get('role', 'staff')
+        phone      = request.POST.get('phone', '').strip()
+        department = request.POST.get('department', '').strip()
+
+        if action == 'add_existing':
+            user_id = request.POST.get('user_id')
+            try:
+                user = User.objects.get(id=user_id)
+                StoreStaff.objects.create(user=user, role=role, phone=phone, department=department)
+                messages.success(request, f"'{user.username}' added as {role}!")
+            except Exception as e:
+                messages.error(request, f"Error: {e}")
+
+        elif action == 'create_new':
+            username = request.POST.get('username', '').strip()
+            email    = request.POST.get('email', '').strip()
+            password = request.POST.get('password', '').strip()
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username already exists.")
+            else:
+                try:
+                    user = User.objects.create_user(username=username, email=email, password=password)
+                    StoreStaff.objects.create(user=user, role=role, phone=phone, department=department)
+                    messages.success(request, f"Store staff '{username}' created!")
+                except Exception as e:
+                    messages.error(request, f"Error: {e}")
+
+    return redirect('admin_store_dashboard')
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def delete_store_staff(request, staff_id):
+    """Admin: Remove a user from store staff."""
+    if request.method == 'POST':
+        staff = get_object_or_404(StoreStaff, id=staff_id)
+        name  = staff.user.username
+        staff.delete()
+        messages.success(request, f"'{name}' removed from store staff.")
+    return redirect('admin_store_dashboard')
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def edit_store_staff(request, staff_id):
+    """Admin: Edit store staff details."""
+    staff = get_object_or_404(StoreStaff, id=staff_id)
+    if request.method == 'POST':
+        role       = request.POST.get('role', staff.role)
+        phone      = request.POST.get('phone', '').strip()
+        department = request.POST.get('department', '').strip()
+        email      = request.POST.get('email', '').strip()
+        password   = request.POST.get('password', '').strip()
+
+        staff.role       = role
+        staff.phone      = phone
+        staff.department = department
+        staff.save()
+
+        if email:
+            staff.user.email = email
+        if password:
+            staff.user.set_password(password)
+        staff.user.save()
+
+        messages.success(request, f"'{staff.user.username}' updated successfully!")
+        return redirect('admin_store_dashboard')
+
+    return render(request, 'edit_store_staff.html', {'staff': staff})
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def update_store_request(request, request_id):
+    """Admin: Update item fulfilment quantities + overall status."""
+    store_req = get_object_or_404(StoreRequest, id=request_id)
+    if request.method == 'POST':
+        # Update each item's quantity_provided
+        for item in store_req.items.all():
+            key     = f'qty_provided_{item.id}'
+            new_qty = request.POST.get(key)
+            if new_qty is not None:
+                try:
+                    item.quantity_provided = max(0, int(new_qty))
+                    item.save()
+                except ValueError:
+                    pass
+
+        # Manual status override (optional)
+        manual_status  = request.POST.get('status', '').strip()
+        remarks        = request.POST.get('remarks', '').strip()
+        fulfilled_by_id = request.POST.get('fulfilled_by', '').strip()
+
+        # Auto-compute status from items
+        items = list(store_req.items.all())
+        if items:
+            if all(i.is_fulfilled for i in items):
+                store_req.status = 'fulfilled'
+            elif any(i.quantity_provided > 0 for i in items):
+                store_req.status = 'partial'
+            else:
+                store_req.status = 'pending'
+        elif manual_status:
+            store_req.status = manual_status
+
+        store_req.remarks = remarks
+        if fulfilled_by_id:
+            try:
+                store_req.fulfilled_by = StoreStaff.objects.get(id=fulfilled_by_id)
+            except StoreStaff.DoesNotExist:
+                pass
+        store_req.save()
+        messages.success(request, "Request updated successfully!")
+    return redirect('admin_store_dashboard')
+
+
+@login_required
+def submit_store_request(request):
+    """Teacher / any staff: Submit a new store request with multiple items."""
+    if request.method == 'POST':
+        title      = request.POST.get('title', '').strip()
+        notes      = request.POST.get('notes', '').strip()
+        item_names = request.POST.getlist('item_name')
+        item_qtys  = request.POST.getlist('item_qty')
+
+        if not title or not any(n.strip() for n in item_names):
+            messages.error(request, "Please provide a title and at least one item.")
+            return render(request, 'submit_store_request.html')
+
+        store_req = StoreRequest.objects.create(
+            requested_by=request.user,
+            title=title,
+            notes=notes,
+        )
+        for name, qty in zip(item_names, item_qtys):
+            name = name.strip()
+            if name:
+                try:
+                    qty_int = max(1, int(qty))
+                except (ValueError, TypeError):
+                    qty_int = 1
+                StoreRequestItem.objects.create(
+                    request=store_req,
+                    item_name=name,
+                    quantity_requested=qty_int
+                )
+        messages.success(request, f"Store request '{title}' submitted!")
+        return redirect('teacher_dashboard')
+
+    return render(request, 'submit_store_request.html')

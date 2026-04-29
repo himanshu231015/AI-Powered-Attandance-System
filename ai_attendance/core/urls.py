@@ -24,6 +24,8 @@ urlpatterns = [
     path('edit_student/<int:student_id>/', views.edit_student, name='edit_student'),
     path('delete_student/<int:student_id>/', views.delete_student, name='delete_student'),
     path('manage_teachers/', views.manage_teachers, name='manage_teachers'),
+    path('edit_teacher/<int:teacher_id>/', views.edit_teacher, name='edit_teacher'),
+    path('delete_teacher/<int:teacher_id>/', views.delete_teacher, name='delete_teacher'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('change_password/', views.change_password, name='change_password'),
     path('teacher_dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
@@ -37,4 +39,11 @@ urlpatterns = [
     path('store/review/<int:request_id>/', views.review_assessment_request, name='review_assessment_request'),
     path('store/accessory/cancel/<int:request_id>/', views.cancel_accessory_request, name='cancel_accessory_request'),
     path('store/accessory/review/<int:request_id>/', views.review_accessory_request, name='review_accessory_request'),
+    # Store Management
+    path('store_dashboard/', views.admin_store_dashboard, name='admin_store_dashboard'),
+    path('store_staff/add/', views.add_store_staff, name='add_store_staff'),
+    path('store_staff/edit/<int:staff_id>/', views.edit_store_staff, name='edit_store_staff'),
+    path('store_staff/delete/<int:staff_id>/', views.delete_store_staff, name='delete_store_staff'),
+    path('store_request/update/<int:request_id>/', views.update_store_request, name='update_store_request'),
+    path('store_request/submit/', views.submit_store_request, name='submit_store_request'),
 ]
