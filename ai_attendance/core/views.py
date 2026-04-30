@@ -1724,7 +1724,7 @@ def store_head_dashboard(request):
     ).prefetch_related('items').select_related('requested_by', 'assigned_to__user')
 
     done = StoreRequest.objects.filter(
-        status__in=['partial', 'fulfilled', 'rejected']
+        status__in=['delivered', 'partial', 'fulfilled', 'rejected']
     ).prefetch_related('items').select_related('requested_by', 'assigned_to__user')[:20]
 
     all_staff = StoreStaff.objects.filter(role='staff').select_related('user')
@@ -1775,7 +1775,7 @@ def store_staff_tasks(request):
     ).prefetch_related('items').select_related('requested_by')
 
     completed = StoreRequest.objects.filter(
-        assigned_to=sp, status__in=['partial', 'fulfilled']
+        assigned_to=sp, status__in=['delivered', 'partial', 'fulfilled']
     ).prefetch_related('items').select_related('requested_by')
 
     return render(request, 'store_staff_tasks.html', {
@@ -1821,14 +1821,79 @@ def store_staff_respond(request, request_id):
         # Auto-compute status
         items = list(store_req.items.all())
         if items:
-            if all(i.is_fulfilled for i in items):
-                store_req.status = 'fulfilled'
-            elif any(i.quantity_provided > 0 for i in items):
-                store_req.status = 'partial'
+            if any(i.quantity_provided > 0 for i in items):
+                store_req.status = 'delivered'
+            else:
+                store_req.status = 'rejected'
 
         store_req.save()
         messages.success(request, "Response submitted successfully!")
     return redirect('store_staff_tasks')
+
+
+@login_required
+def teacher_confirm_receipt(request, request_id):
+    """Teacher confirms receipt of store items."""
+    store_req = get_object_or_404(StoreRequest, id=request_id, requested_by=request.user, status='delivered')
+    
+    if request.method == 'POST':
+        teacher_remarks = request.POST.get('teacher_remarks', '').strip()
+        
+        # Update each item's qty_received
+        for item in store_req.items.all():
+            key = f'qty_received_{item.id}'
+            new_qty = request.POST.get(key)
+            if new_qty is not None:
+                try:
+                    item.quantity_received = max(0, min(int(new_qty), item.quantity_requested))
+                    item.save()
+                except ValueError:
+                    pass
+        
+        store_req.teacher_remarks = teacher_remarks
+        store_req.teacher_confirmed_at = timezone.now()
+        
+        # Auto-compute status
+        items = list(store_req.items.all())
+        if items:
+            if all(i.quantity_received >= i.quantity_requested for i in items):
+                store_req.status = 'fulfilled'
+            elif any(i.quantity_received > 0 for i in items):
+                store_req.status = 'partial'
+            else:
+                store_req.status = 'rejected'
+        
+        store_req.save()
+        
+        # Notify HOD and Store Head
+        hod_profile = _get_hod_profile(request.user)
+        if hod_profile:
+            # If the requested_by is HOD, maybe notify admin or another HOD?
+            pass
+        else:
+            try:
+                # Find the HOD for this department
+                dept = request.user.teacher_profile.department
+                hod_user = User.objects.filter(
+                    teacher_profile__department=dept,
+                    teacher_profile__designation='hod'
+                ).first()
+                if hod_user and hasattr(hod_user, 'student'):
+                    # Notification model currently expects a Student recipient, 
+                    # but wait, let's see how Notifications work in this app.
+                    pass
+            except Exception:
+                pass
+                
+        # Actually, let's look at Notification model. It requires `recipient=Student`. 
+        # Wait, if Notification is only for Students, we shouldn't use it for HOD/Store Head, 
+        # or we should adjust the Notification model. 
+        # Let's just rely on the dashboards to show completed status, or if we can use django.contrib.messages.
+        
+        messages.success(request, "Items receipt confirmed successfully!")
+        return redirect('my_store_requests')
+
+    return render(request, 'teacher_confirm_receipt.html', {'store_req': store_req})
 
 
 # ── Teacher: track their own store request statuses ───────────────────

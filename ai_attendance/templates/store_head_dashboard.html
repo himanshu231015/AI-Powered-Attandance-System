@@ -4,6 +4,7 @@
 .status-pill { font-size:.78rem; padding:4px 12px; border-radius:20px; font-weight:600; }
 .sp-pending_store { background:#3b82f622; color:#2563eb; border:1px solid #3b82f655; }
 .sp-assigned      { background:#8b5cf622; color:#7c3aed; border:1px solid #8b5cf655; }
+.sp-delivered     { background:#fef08a;   color:#854d0e; border:1px solid #fde047; }
 .sp-partial       { background:#06b6d422; color:#0891b2; border:1px solid #06b6d455; }
 .sp-fulfilled     { background:#10b98122; color:#059669; border:1px solid #10b98155; }
 </style>
@@ -143,7 +144,7 @@
         {% if done %}
         <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead><tr><th class="ps-4">Teacher</th><th>Title</th><th>Staff</th><th>Delivery</th><th>Status</th></tr></thead>
+            <thead><tr><th class="ps-4">Teacher</th><th>Title</th><th>Staff</th><th>Delivery</th><th>Status</th><th>Teacher Confirmation</th></tr></thead>
             <tbody>
             {% for req in done %}
             <tr>
@@ -155,8 +156,22 @@
                     <span class="status-pill sp-{{ req.status }}">
                         {% if req.status == 'fulfilled' %}✅ Fulfilled
                         {% elif req.status == 'partial' %}🔵 Partial
+                        {% elif req.status == 'delivered' %}📦 Awaiting Confirmation
                         {% else %}❌ Rejected{% endif %}
                     </span>
+                </td>
+                <td>
+                    {% if req.teacher_confirmed_at %}
+                    <div class="text-success small fw-semibold">
+                        <i class="fas fa-check-circle me-1"></i>Confirmed
+                    </div>
+                    <div class="text-muted" style="font-size:.75rem;">{{ req.teacher_confirmed_at|date:"d M Y, H:i" }}</div>
+                    {% if req.teacher_remarks %}
+                    <div class="text-muted fst-italic" style="font-size:.75rem;">"{{ req.teacher_remarks }}"</div>
+                    {% endif %}
+                    {% else %}
+                    <span class="text-muted small">—</span>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

@@ -48,6 +48,7 @@ urlpatterns = [
     # Store Workflow
     path('store_request/submit/', views.submit_store_request, name='submit_store_request'),
     path('store_request/mine/', views.my_store_requests, name='my_store_requests'),
+    path('store_request/confirm/<int:request_id>/', views.teacher_confirm_receipt, name='teacher_confirm_receipt'),
     path('hod/store/', views.hod_store_requests, name='hod_store_requests'),
     path('hod/store/review/<int:request_id>/', views.hod_review_store_request, name='hod_review_store_request'),
     path('store_head/', views.store_head_dashboard, name='store_head_dashboard'),

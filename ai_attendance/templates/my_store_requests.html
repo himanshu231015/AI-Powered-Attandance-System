@@ -6,6 +6,7 @@
 .sp-hod_rejected  { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
 .sp-pending_store { background:#dbeafe; color:#2563eb; border:1px solid #93c5fd; }
 .sp-assigned      { background:#ede9fe; color:#7c3aed; border:1px solid #c4b5fd; }
+.sp-delivered     { background:#fef08a; color:#854d0e; border:1px solid #fde047; }
 .sp-partial       { background:#cffafe; color:#0891b2; border:1px solid #67e8f9; }
 .sp-fulfilled     { background:#d1fae5; color:#059669; border:1px solid #6ee7b7; }
 .sp-rejected      { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
@@ -57,6 +58,7 @@
                 {% elif req.status == 'hod_rejected' %}❌ Rejected by HOD
                 {% elif req.status == 'pending_store'%}📤 At Store Head
                 {% elif req.status == 'assigned'     %}🔧 Being Processed
+                {% elif req.status == 'delivered'    %}📦 Delivered (Confirm Receipt)
                 {% elif req.status == 'partial'      %}🔵 Partially Fulfilled
                 {% elif req.status == 'fulfilled'    %}✅ Fully Fulfilled
                 {% else %}❌ Rejected{% endif %}
@@ -163,14 +165,27 @@
 
                     <!-- Step 5: Final -->
                     {% if req.status == 'fulfilled' %}
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 mb-2">
                         <div class="timeline-dot" style="background:#10b981;margin-top:4px;"></div>
                         <div><div class="small fw-semibold text-success">✅ Fully Fulfilled</div></div>
                     </div>
                     {% elif req.status == 'partial' %}
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 mb-2">
                         <div class="timeline-dot" style="background:#06b6d4;margin-top:4px;"></div>
                         <div><div class="small fw-semibold" style="color:#0891b2;">🔵 Partially Fulfilled</div></div>
+                    </div>
+                    {% elif req.status == 'delivered' %}
+                    <div class="d-flex gap-2 mb-3">
+                        <div class="timeline-dot" style="background:#eab308;margin-top:4px;"></div>
+                        <div>
+                            <div class="small fw-semibold text-warning">📦 Delivered (Action Required)</div>
+                            <div class="text-muted" style="font-size:.75rem;">Staff has delivered the items. Please confirm.</div>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <a href="{% url 'teacher_confirm_receipt' req.id %}" class="btn btn-warning btn-sm fw-bold w-100 shadow-sm" style="color:#854d0e;">
+                            <i class="fas fa-clipboard-check me-1"></i> Confirm Receipt
+                        </a>
                     </div>
                     {% endif %}
                 </div>

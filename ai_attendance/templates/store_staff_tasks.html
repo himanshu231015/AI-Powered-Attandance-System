@@ -121,23 +121,45 @@
         {% if completed %}
         <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead><tr><th class="ps-4">Teacher</th><th>Title</th><th>Progress</th><th>Delivery</th><th>Message</th></tr></thead>
+            <thead><tr>
+                <th class="ps-4">Teacher</th>
+                <th>Title</th>
+                <th>Items Provided</th>
+                <th>Delivery</th>
+                <th>Your Message</th>
+                <th>Teacher Confirmation</th>
+            </tr></thead>
             <tbody>
             {% for req in completed %}
             <tr>
                 <td class="ps-4 fw-semibold">{{ req.requested_by.username }}</td>
                 <td>{{ req.title }}</td>
                 <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="progress" style="height:6px;width:60px;">
-                            <div class="progress-bar {% if req.fulfillment_pct == 100 %}bg-success{% else %}bg-warning{% endif %}"
-                                 style="width:{{ req.fulfillment_pct }}%"></div>
-                        </div>
-                        <small>{{ req.fulfillment_pct }}%</small>
+                    {% for item in req.items.all %}
+                    <div class="small">
+                        <span class="fw-semibold">{{ item.item_name }}</span>:
+                        <span class="badge bg-primary">{{ item.quantity_provided }}</span> provided
+                        {% if req.teacher_confirmed_at %}
+                        → <span class="badge bg-success">{{ item.quantity_received }}</span> received
+                        {% endif %}
                     </div>
+                    {% endfor %}
                 </td>
                 <td class="text-muted small">{{ req.expected_delivery|default:"—" }}</td>
                 <td class="text-muted small">{{ req.staff_response|truncatechars:50|default:"—" }}</td>
+                <td>
+                    {% if req.teacher_confirmed_at %}
+                    <div class="text-success small fw-semibold">
+                        <i class="fas fa-check-double me-1"></i>Confirmed
+                    </div>
+                    <div class="text-muted" style="font-size:.75rem;">{{ req.teacher_confirmed_at|date:"d M Y, H:i" }}</div>
+                    {% if req.teacher_remarks %}
+                    <div class="text-muted fst-italic" style="font-size:.75rem;">"{{ req.teacher_remarks }}"</div>
+                    {% endif %}
+                    {% else %}
+                    <span class="badge bg-warning text-dark" style="font-size:.75rem;">⏳ Awaiting Teacher</span>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
             </tbody>

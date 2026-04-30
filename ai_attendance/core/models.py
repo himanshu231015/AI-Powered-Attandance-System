@@ -239,6 +239,7 @@ class StoreRequest(models.Model):
         ('hod_rejected',  'Rejected by HOD'),
         ('pending_store', 'Awaiting Store Head'),
         ('assigned',      'Assigned to Staff'),
+        ('delivered',     'Delivered by Staff (Awaiting Confirmation)'),
         ('partial',       'Partially Fulfilled'),
         ('fulfilled',     'Fully Fulfilled'),
         ('rejected',      'Rejected by Store'),
@@ -271,6 +272,10 @@ class StoreRequest(models.Model):
     expected_delivery = models.DateField(null=True, blank=True)
     staff_response    = models.TextField(blank=True, help_text='Store staff response/notes')
     remarks           = models.TextField(blank=True, help_text='Store Head remarks')
+
+    # Teacher Confirmation
+    teacher_confirmed_at = models.DateTimeField(null=True, blank=True)
+    teacher_remarks      = models.TextField(blank=True, help_text='Teacher remarks on receipt')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -305,6 +310,7 @@ class StoreRequestItem(models.Model):
     item_name          = models.CharField(max_length=200)
     quantity_requested = models.PositiveIntegerField(default=1)
     quantity_provided  = models.PositiveIntegerField(default=0)
+    quantity_received  = models.PositiveIntegerField(default=0)
 
     @property
     def is_fulfilled(self):
