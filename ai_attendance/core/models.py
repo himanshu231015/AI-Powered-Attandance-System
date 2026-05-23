@@ -324,3 +324,110 @@ class StoreRequestItem(models.Model):
 
     def __str__(self):
         return f"{self.item_name}: {self.quantity_provided}/{self.quantity_requested}"
+
+
+# ─────────────────────────────────────────────
+#  Store Notifications (User-level)
+# ─────────────────────────────────────────────
+
+class StoreNotification(models.Model):
+    NOTIF_TYPE_CHOICES = [
+        ('status_update', 'Status Updated'),
+        ('hod_action',    'HOD Action'),
+        ('store_action',  'Store Action'),
+        ('fulfillment',   'Fulfilment Update'),
+        ('general',       'General'),
+    ]
+
+    recipient     = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='store_notifications'
+    )
+    store_request = models.ForeignKey(
+        'StoreRequest', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='notifications'
+    )
+    message       = models.TextField()
+    notif_type    = models.CharField(max_length=30, choices=NOTIF_TYPE_CHOICES, default='general')
+    is_read       = models.BooleanField(default=False)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.notif_type}] → {self.recipient.username}: {self.message[:60]}"
+
+
+class CourseMaterial(models.Model):
+    MATERIAL_TYPES = [
+        ('assignment', 'Assignment'),
+        ('notes', 'Notes'),
+    ]
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='course_materials')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    material_type = models.CharField(max_length=20, choices=MATERIAL_TYPES, default='assignment')
+    file = models.FileField(upload_to='course_materials/')
+    subject = models.CharField(max_length=100, blank=True)
+    year = models.CharField(max_length=10, blank=True)
+    section = models.CharField(max_length=10, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    due_date = models.DateTimeField(blank=True, null=True)
+
+    @property
+    def is_past_due(self):
+        from django.utils import timezone
+        if self.due_date:
+            return timezone.now() > self.due_date
+        return False
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.get_material_type_display()}"
+
+
+class StudentSubmission(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='submissions')
+    assignment = models.ForeignKey(CourseMaterial, on_delete=models.CASCADE, related_name='submissions')
+    file = models.FileField(upload_to='submissions/')
+    remarks = models.TextField(blank=True, null=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    grade = models.CharField(max_length=10, blank=True, null=True)
+    feedback = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+        unique_together = ('student', 'assignment')
+
+    def __str__(self):
+        return f"{self.student.name} - {self.assignment.title}"
+
+    @property
+    def is_late(self):
+        if self.assignment.due_date:
+            return self.submitted_at > self.assignment.due_date
+        return False
+
+
+class LateSubmissionRequest(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='late_requests')
+    assignment = models.ForeignKey(CourseMaterial, on_delete=models.CASCADE, related_name='late_requests')
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('student', 'assignment')
+
+    def __str__(self):
+        return f"{self.student.name} - {self.assignment.title} ({self.status})"

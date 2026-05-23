@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="header-title mb-0"><i class="fas fa-book me-2"></i>Assignments & Notes</h2>
+        <p class="text-muted small mb-0">Browse and download materials uploaded by your teachers.</p>
+    </div>
+</div>
+
+<!-- Filter Section -->
+<div class="card shadow-sm mb-4 border-0">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-3 align-items-center mb-0">
+            <span class="fw-bold text-muted me-2"><i class="fas fa-filter me-1"></i>Filter:</span>
+            
+            <a href="{% url 'student_materials' %}" class="btn btn-sm {% if not selected_type %}btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+                All
+            </a>
+            <a href="{% url 'student_materials' %}?type=assignment" class="btn btn-sm {% if selected_type == 'assignment' %}btn-warning text-dark border-warning{% else %}btn-outline-warning text-dark{% endif %} rounded-pill px-3">
+                <i class="fas fa-tasks me-1"></i>Assignments
+            </a>
+            <a href="{% url 'student_materials' %}?type=notes" class="btn btn-sm {% if selected_type == 'notes' %}btn-info text-dark border-info{% else %}btn-outline-info text-dark{% endif %} rounded-pill px-3">
+                <i class="fas fa-file-alt me-1"></i>Notes
+            </a>
+        </form>
+    </div>
+</div>
+
+<!-- Materials Grid -->
+<div class="row g-4">
+    {% if materials %}
+        {% for m in materials %}
+        <div class="col-md-4 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 material-card" style="transition: transform 0.2s;">
+                <!-- Card Header -->
+                <div class="card-header border-0 pb-0 bg-transparent text-end pt-3">
+                    {% if m.material_type == 'assignment' %}
+                    <span class="badge bg-warning text-dark"><i class="fas fa-tasks me-1"></i>Assignment</span>
+                    {% else %}
+                    <span class="badge bg-info text-dark"><i class="fas fa-file-alt me-1"></i>Notes</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Card Body -->
+                <div class="card-body pt-2 text-center">
+                    <div class="mb-3">
+                        {% if m.material_type == 'assignment' %}
+                        <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 rounded-circle" style="width: 60px; height: 60px;">
+                            <i class="fas fa-clipboard-check fa-2x text-warning"></i>
+                        </div>
+                        {% else %}
+                        <div class="d-inline-flex align-items-center justify-content-center bg-info bg-opacity-10 rounded-circle" style="width: 60px; height: 60px;">
+                            <i class="fas fa-book-open fa-2x text-info"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <h5 class="card-title fw-bold text-dark mb-1">{{ m.title }}</h5>
+                    <div class="text-muted small mb-2">{{ m.subject }}</div>
+                    {% if m.material_type == 'assignment' and m.due_date %}
+                    <div class="small mb-2 text-danger fw-semibold" style="font-size: 0.8rem;">
+                        <i class="far fa-clock me-1"></i>Last Date: {{ m.due_date|date:"d M, Y H:i" }}
+                    </div>
+                    {% endif %}
+
+                    {% if m.description %}
+                    <p class="card-text small text-muted text-truncate mb-2">{{ m.description }}</p>
+                    {% endif %}
+                    
+                    {% if m.material_type == 'assignment' %}
+                        <!-- Submission Section -->
+                        <div class="mt-3 border-top pt-3 text-start">
+                            {% if m.submission %}
+                                <div class="p-2 rounded bg-success bg-opacity-10 border border-success border-opacity-25 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="small fw-semibold text-success"><i class="fas fa-check-circle me-1"></i>Submitted</span>
+                                        <a href="{{ m.submission.file.url }}" target="_blank" class="badge bg-success text-decoration-none" title="Download Submission">
+                                            <i class="fas fa-file-pdf me-1"></i>My PDF
+                                        </a>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        Uploaded: {{ m.submission.submitted_at|date:"d M, Y H:i" }}
+                                        {% if m.submission.is_late %}
+                                            <span class="badge bg-danger ms-1">LATE</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if m.submission.remarks %}
+                                        <div class="text-muted mt-1 text-truncate" style="font-size: 0.75rem;" title="{{ m.submission.remarks }}">
+                                            <strong>Note:</strong> {{ m.submission.remarks }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                {% if m.submission.grade %}
+                                <div class="p-2 rounded bg-warning bg-opacity-10 border border-warning border-opacity-25 mb-2 text-start">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small fw-bold text-dark"><i class="fas fa-award text-warning me-1"></i>Graded</span>
+                                        <span class="badge bg-warning text-dark fw-bold">{{ m.submission.grade }}</span>
+                                    </div>
+                                    {% if m.submission.feedback %}
+                                    <div class="text-muted mt-1 small" style="font-size: 0.75rem;">
+                                        <strong>Feedback:</strong> {{ m.submission.feedback }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+
+                                {% if m.is_past_due and m.late_request.status != 'Approved' %}
+                                    <button class="btn btn-sm btn-outline-secondary w-100 mt-1" type="button" disabled title="Deadline has passed">
+                                        <i class="fas fa-lock me-1"></i>Resubmission Closed
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-sm btn-outline-secondary w-100 mt-1" type="button" data-bs-toggle="collapse" data-bs-target="#submitForm-{{ m.id }}" aria-expanded="false" aria-controls="submitForm-{{ m.id }}">
+                                        <i class="fas fa-redo me-1"></i>Resubmit PDF
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                {% if m.is_past_due %}
+                                    {% if m.late_request %}
+                                        {% if m.late_request.status == 'Pending' %}
+                                            <div class="alert alert-warning py-2 mb-2" style="font-size: 0.75rem;">
+                                                <i class="fas fa-hourglass-half me-1"></i>Late Submission request pending approval.
+                                            </div>
+                                        {% elif m.late_request.status == 'Approved' %}
+                                            <div class="alert alert-success py-2 mb-2" style="font-size: 0.75rem;">
+                                                <i class="fas fa-check-circle me-1"></i>Late Submission request approved!
+                                            </div>
+                                            <button class="btn btn-sm btn-warning text-dark border-warning w-100 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#submitForm-{{ m.id }}" aria-expanded="false" aria-controls="submitForm-{{ m.id }}">
+                                                <i class="fas fa-cloud-upload-alt me-1"></i>Submit PDF
+                                            </button>
+                                        {% elif m.late_request.status == 'Rejected' %}
+                                            <div class="alert alert-danger py-2 mb-2" style="font-size: 0.75rem;">
+                                                <i class="fas fa-times-circle me-1"></i>Late Submission request rejected.
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="text-center py-2 mb-2">
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 w-100 py-2">
+                                                <i class="fas fa-exclamation-circle me-1"></i>Deadline Passed (Closed)
+                                            </span>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger w-100 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#lateRequestForm-{{ m.id }}" aria-expanded="false">
+                                            <i class="fas fa-paper-plane me-1"></i>Request Late Submission
+                                        </button>
+                                        
+                                        <!-- Collapsible Request Form -->
+                                        <div class="collapse mt-2" id="lateRequestForm-{{ m.id }}">
+                                            <div class="card card-body bg-light p-3 border shadow-none" style="border-radius: 10px;">
+                                                <form method="post" action="{% url 'request_late_submission' m.id %}">
+                                                    {% csrf_token %}
+                                                    <div class="mb-2">
+                                                        <label class="form-label small fw-semibold text-muted mb-1">Reason / Remarks</label>
+                                                        <textarea name="reason" class="form-control form-control-sm" rows="2" placeholder="Explain why you are submitting late..." required></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-danger btn-sm w-100">
+                                                        <i class="fas fa-paper-plane me-1"></i>Submit Request
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="text-center py-2 mb-2">
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 w-100 py-2"><i class="fas fa-info-circle me-1"></i>Not Submitted</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-warning text-dark border-warning w-100 fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#submitForm-{{ m.id }}" aria-expanded="false" aria-controls="submitForm-{{ m.id }}">
+                                        <i class="fas fa-cloud-upload-alt me-1"></i>Submit PDF
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if not m.is_past_due or m.late_request.status == 'Approved' %}
+                            <!-- Collapsible Form -->
+                            <div class="collapse mt-3" id="submitForm-{{ m.id }}">
+                                <div class="card card-body bg-light p-3 border shadow-none" style="border-radius: 10px;">
+                                    <form method="post" action="{% url 'submit_assignment' m.id %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold text-muted mb-1">Select Assignment PDF</label>
+                                            <input type="file" name="file" class="form-control form-control-sm" accept=".pdf" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold text-muted mb-1">Remarks (Optional)</label>
+                                            <textarea name="remarks" class="form-control form-control-sm" rows="1" placeholder="Add any comments..."></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                                            <i class="fas fa-paper-plane me-1"></i>Upload & Submit
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Card Footer -->
+                <div class="card-footer bg-transparent border-top p-3 d-flex justify-content-between align-items-center">
+                    <div class="small text-muted">
+                        <i class="fas fa-user me-1"></i>{{ m.teacher.get_full_name|default:m.teacher.username }}
+                    </div>
+                    <a href="{{ m.file.url }}" target="_blank" class="btn btn-primary btn-sm rounded-circle shadow-sm" title="Download Assignment">
+                        <i class="fas fa-download"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="text-center py-5 text-muted bg-white rounded shadow-sm">
+                <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
+                <h5>No Materials Found</h5>
+                <p>There are currently no assignments or notes available for your class.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .material-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+</style>
+{% endblock %}

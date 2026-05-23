@@ -39,6 +39,15 @@ urlpatterns = [
     path('store/review/<int:request_id>/', views.review_assessment_request, name='review_assessment_request'),
     path('store/accessory/cancel/<int:request_id>/', views.cancel_accessory_request, name='cancel_accessory_request'),
     path('store/accessory/review/<int:request_id>/', views.review_accessory_request, name='review_accessory_request'),
+    # Course Materials
+    path('teacher_materials/', views.teacher_materials, name='teacher_materials'),
+    path('teacher_materials/delete/<int:material_id>/', views.delete_material, name='delete_material'),
+    path('student_materials/', views.student_materials, name='student_materials'),
+    path('student_materials/submit/<int:material_id>/', views.submit_assignment, name='submit_assignment'),
+    path('student_materials/request_late/<int:material_id>/', views.request_late_submission, name='request_late_submission'),
+    path('teacher_materials/submissions/<int:material_id>/', views.view_submissions, name='view_submissions'),
+    path('teacher_materials/grade/<int:submission_id>/', views.grade_submission, name='grade_submission'),
+    path('teacher_materials/resolve_late/<int:request_id>/', views.resolve_late_request, name='resolve_late_request'),
     # Store Management (Admin)
     path('store_dashboard/', views.admin_store_dashboard, name='admin_store_dashboard'),
     path('store_staff/add/', views.add_store_staff, name='add_store_staff'),
@@ -55,4 +64,8 @@ urlpatterns = [
     path('store_head/assign/<int:request_id>/', views.assign_store_request, name='assign_store_request'),
     path('store_staff/tasks/', views.store_staff_tasks, name='store_staff_tasks'),
     path('store_staff/respond/<int:request_id>/', views.store_staff_respond, name='store_staff_respond'),
+    # Store Notifications API
+    path('store_notifications/get/', views.get_store_notifications, name='get_store_notifications'),
+    path('store_notifications/read/<int:notif_id>/', views.mark_store_notification_read, name='mark_store_notification_read'),
+    path('store_notifications/read_all/', views.mark_all_store_notifications_read, name='mark_all_store_notifications_read'),
 ]

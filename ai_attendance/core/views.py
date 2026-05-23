@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
-from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest, TeacherProfile, StoreStaff, StoreRequest, StoreRequestItem
+from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest, TeacherProfile, StoreStaff, StoreRequest, StoreRequestItem, StoreNotification, CourseMaterial, StudentSubmission, LateSubmissionRequest
 from .utils import train_model, identify_faces, detect_and_crop_face, get_existing_attendance_record
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import user_passes_test
 from django.db import transaction
+from django.db.models import Q, Count
 import os
 import datetime
 import json
@@ -1406,6 +1407,38 @@ def create_notification(student, message, notif_type='Attendance'):
     except Exception as e:
         print(f"Error creating notification: {e}")
 
+
+def send_store_notification(recipients, message, store_request=None, notif_type='general'):
+    """Send a StoreNotification to one or more User recipients."""
+    if isinstance(recipients, User):
+        recipients = [recipients]
+    for user in recipients:
+        if user:
+            try:
+                StoreNotification.objects.create(
+                    recipient=user,
+                    store_request=store_request,
+                    message=message,
+                    notif_type=notif_type,
+                )
+            except Exception as e:
+                print(f"[StoreNotification] Error for {user}: {e}")
+
+
+def _get_dept_hod_user(department):
+    """Return HOD User for a given department, or None."""
+    return User.objects.filter(
+        teacher_profile__department=department,
+        teacher_profile__designation='hod',
+        is_staff=True,
+        is_superuser=False,
+    ).first()
+
+
+def _get_store_head_users():
+    """Return all Store Head Users."""
+    return list(User.objects.filter(store_profile__role='head'))
+
 @login_required
 def get_notifications(request):
     """API to fetch unread notifications for the logged-in student."""
@@ -1551,6 +1584,8 @@ def update_store_request(request, request_id):
     """Admin: Update item fulfilment quantities + overall status."""
     store_req = get_object_or_404(StoreRequest, id=request_id)
     if request.method == 'POST':
+        old_status = store_req.status
+
         # Update each item's quantity_provided
         for item in store_req.items.all():
             key     = f'qty_provided_{item.id}'
@@ -1563,8 +1598,8 @@ def update_store_request(request, request_id):
                     pass
 
         # Manual status override (optional)
-        manual_status  = request.POST.get('status', '').strip()
-        remarks        = request.POST.get('remarks', '').strip()
+        manual_status   = request.POST.get('status', '').strip()
+        remarks         = request.POST.get('remarks', '').strip()
         fulfilled_by_id = request.POST.get('fulfilled_by', '').strip()
 
         # Auto-compute status from items
@@ -1575,7 +1610,7 @@ def update_store_request(request, request_id):
             elif any(i.quantity_provided > 0 for i in items):
                 store_req.status = 'partial'
             else:
-                store_req.status = 'pending'
+                store_req.status = store_req.status  # keep current
         elif manual_status:
             store_req.status = manual_status
 
@@ -1586,7 +1621,52 @@ def update_store_request(request, request_id):
             except StoreStaff.DoesNotExist:
                 pass
         store_req.save()
-        messages.success(request, "Request updated successfully!")
+
+        # ── Send notifications to all stakeholders ──────────────────────
+        new_status      = store_req.status
+        status_label    = dict(StoreRequest.STATUS_CHOICES).get(new_status, new_status)
+        req_title       = store_req.title
+        teacher_user    = store_req.requested_by
+        notif_message   = (
+            f"[Admin Update] Request '{req_title}' status → '{status_label}'. "
+            f"Remarks: {remarks}" if remarks else
+            f"[Admin Update] Request '{req_title}' status → '{status_label}'."
+        )
+
+        notify_users = [teacher_user]   # always notify the requesting teacher
+
+        # Notify HOD if request came from a teacher with a dept
+        try:
+            dept = teacher_user.teacher_profile.department
+            hod_user = _get_dept_hod_user(dept)
+            if hod_user and hod_user != teacher_user:
+                notify_users.append(hod_user)
+        except Exception:
+            pass
+
+        # Notify Store Heads
+        notify_users.extend(_get_store_head_users())
+
+        # Notify assigned store staff (if any)
+        if store_req.assigned_to:
+            notify_users.append(store_req.assigned_to.user)
+        if store_req.fulfilled_by and store_req.fulfilled_by != store_req.assigned_to:
+            notify_users.append(store_req.fulfilled_by.user)
+
+        # Deduplicate
+        seen = set()
+        unique_users = []
+        for u in notify_users:
+            if u and u.id not in seen:
+                seen.add(u.id)
+                unique_users.append(u)
+
+        send_store_notification(
+            unique_users, notif_message,
+            store_request=store_req, notif_type='status_update'
+        )
+
+        messages.success(request, "Request updated and all stakeholders notified!")
     return redirect('admin_store_dashboard')
 
 
@@ -1697,13 +1777,143 @@ def hod_review_store_request(request, request_id):
 
         if action == 'approve':
             store_req.status = 'pending_store'
+            action_text = 'approved'
             messages.success(request, f"Request '{store_req.title}' approved → sent to Store Head.")
         else:
             store_req.status = 'hod_rejected'
+            action_text = 'rejected'
             messages.warning(request, f"Request '{store_req.title}' rejected.")
 
         store_req.save()
+
+        # Notify teacher and store heads
+        hod_name = request.user.get_full_name() or request.user.username
+        notif_msg = (
+            f"Your request '{store_req.title}' has been {action_text} by HOD ({hod_name})."
+            + (f" Remarks: {hod_remarks}" if hod_remarks else "")
+        )
+        notify_list = [store_req.requested_by] + _get_store_head_users()
+        send_store_notification(notify_list, notif_msg, store_request=store_req, notif_type='hod_action')
+
     return redirect('hod_store_requests')
+
+# ───────────────────────────────────────────────────────
+#  COURSE MATERIALS (ASSIGNMENTS & NOTES)
+# ───────────────────────────────────────────────────────
+
+@login_required
+def teacher_materials(request):
+    """Teacher: Upload and manage Assignments and Notes."""
+    if not request.user.is_staff or request.user.is_superuser:
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        material_type = request.POST.get('material_type', 'assignment')
+        subject = request.POST.get('subject', '').strip()
+        year = request.POST.get('year', '').strip()
+        section = request.POST.get('section', '').strip()
+        file = request.FILES.get('file')
+
+        due_date_str = request.POST.get('due_date', '').strip()
+        due_date = None
+        if due_date_str:
+            try:
+                due_date = timezone.datetime.fromisoformat(due_date_str)
+                if timezone.is_naive(due_date):
+                    due_date = timezone.make_aware(due_date)
+            except ValueError:
+                pass
+
+        if not title or not file:
+            messages.error(request, 'Title and File are required.')
+        else:
+            try:
+                CourseMaterial.objects.create(
+                    teacher=request.user,
+                    title=title,
+                    description=description,
+                    material_type=material_type,
+                    subject=subject,
+                    year=year,
+                    section=section,
+                    file=file,
+                    due_date=due_date
+                )
+                messages.success(request, f"{material_type.capitalize()} '{title}' uploaded successfully!")
+                return redirect('teacher_materials')
+            except Exception as e:
+                messages.error(request, f"Error uploading file: {e}")
+
+    materials = CourseMaterial.objects.filter(teacher=request.user).annotate(submission_count=Count('submissions'))
+    material_types = CourseMaterial.MATERIAL_TYPES
+    teacher_subjects = TeacherSubject.objects.filter(teacher=request.user).values_list('subject', flat=True).distinct()
+
+    return render(request, 'teacher_portal/manage_materials.html', {
+        'materials': materials,
+        'material_types': material_types,
+        'teacher_subjects': teacher_subjects,
+    })
+
+@login_required
+def delete_material(request, material_id):
+    """Teacher: Delete an uploaded material."""
+    if not request.user.is_staff:
+        return redirect('home')
+    
+    material = get_object_or_404(CourseMaterial, id=material_id, teacher=request.user)
+    if request.method == 'POST':
+        title = material.title
+        material.delete()
+        messages.success(request, f"Deleted '{title}'.")
+        
+    return redirect('teacher_materials')
+
+
+@login_required
+def student_materials(request):
+    """Student: View and download Assignments and Notes."""
+    if not hasattr(request.user, 'student'):
+        messages.error(request, 'Access denied. Student profile required.')
+        return redirect('home')
+
+    student = request.user.student
+    
+    materials_query = CourseMaterial.objects.all()
+    
+    # Filter by Year
+    if student.year:
+        materials_query = materials_query.filter(
+            Q(year='') | Q(year__iexact=student.year)
+        )
+    
+    # Filter by Section
+    if student.section:
+        materials_query = materials_query.filter(
+            Q(section='') | Q(section__iexact=student.section)
+        )
+
+    # Allow custom filtering
+    material_type = request.GET.get('type', '')
+    if material_type:
+        materials_query = materials_query.filter(material_type=material_type)
+
+    materials = list(materials_query.select_related('teacher'))
+
+    # Fetch submissions and late requests for student
+    submissions = {s.assignment_id: s for s in StudentSubmission.objects.filter(student=student)}
+    late_requests = {r.assignment_id: r for r in LateSubmissionRequest.objects.filter(student=student)}
+    for m in materials:
+        if m.material_type == 'assignment':
+            m.submission = submissions.get(m.id)
+            m.late_request = late_requests.get(m.id)
+
+    return render(request, 'student_portal/student_materials.html', {
+        'materials': materials,
+        'selected_type': material_type,
+    })
 
 
 # ── Store Head: assign requests to staff ─────────────────────────────
@@ -1756,8 +1966,23 @@ def assign_store_request(request, request_id):
             store_req.remarks      = remarks
             store_req.save()
             messages.success(request, f"Assigned to {staff.user.username}!")
-        except StoreStaff.DoesNotExist:
-            messages.error(request, "Staff not found.")
+
+            # Notify store staff that they have a new task
+            head_name = request.user.get_full_name() or request.user.username
+            send_store_notification(
+                staff.user,
+                f"You have been assigned a new store request: '{store_req.title}' by Store Head ({head_name})."
+                + (f" Note: {remarks}" if remarks else ""),
+                store_request=store_req, notif_type='store_action'
+            )
+            # Notify the requesting teacher
+            send_store_notification(
+                store_req.requested_by,
+                f"Your request '{store_req.title}' has been assigned to store staff ({staff.user.get_full_name() or staff.user.username}) and is being processed.",
+                store_request=store_req, notif_type='store_action'
+            )
+        except (StoreStaff.DoesNotExist, ValueError):
+            messages.error(request, "Staff not found or invalid ID.")
     return redirect('store_head_dashboard')
 
 
@@ -1828,6 +2053,26 @@ def store_staff_respond(request, request_id):
 
         store_req.save()
         messages.success(request, "Response submitted successfully!")
+
+        # ── Notify teacher + store heads ─────────────────────────────────
+        staff_name = request.user.get_full_name() or request.user.username
+        status_label = dict(StoreRequest.STATUS_CHOICES).get(store_req.status, store_req.status)
+        notif_msg = (
+            f"Store Staff ({staff_name}) has fulfilled your request '{store_req.title}'. "
+            f"Status: {status_label}. Please confirm receipt."
+            + (f" Note: {staff_response}" if staff_response else "")
+        )
+        notify_list = [store_req.requested_by] + _get_store_head_users()
+        # Also notify HOD
+        try:
+            dept = store_req.requested_by.teacher_profile.department
+            hod_user = _get_dept_hod_user(dept)
+            if hod_user:
+                notify_list.append(hod_user)
+        except Exception:
+            pass
+        send_store_notification(notify_list, notif_msg, store_request=store_req, notif_type='fulfillment')
+
     return redirect('store_staff_tasks')
 
 
@@ -1864,32 +2109,30 @@ def teacher_confirm_receipt(request, request_id):
                 store_req.status = 'rejected'
         
         store_req.save()
-        
-        # Notify HOD and Store Head
-        hod_profile = _get_hod_profile(request.user)
-        if hod_profile:
-            # If the requested_by is HOD, maybe notify admin or another HOD?
+
+        # Notify HOD, Store Head, and assigned staff about teacher confirmation
+        teacher_name = request.user.get_full_name() or request.user.username
+        status_label = dict(StoreRequest.STATUS_CHOICES).get(store_req.status, store_req.status)
+        notif_msg = (
+            f"Teacher '{teacher_name}' has confirmed receipt for request '{store_req.title}'. "
+            f"Final Status: {status_label}."
+            + (f" Teacher Remarks: {teacher_remarks}" if teacher_remarks else "")
+        )
+        notify_list = list(_get_store_head_users())
+        if store_req.assigned_to:
+            notify_list.append(store_req.assigned_to.user)
+        if store_req.fulfilled_by and store_req.fulfilled_by != store_req.assigned_to:
+            notify_list.append(store_req.fulfilled_by.user)
+        # Notify HOD
+        try:
+            dept = request.user.teacher_profile.department
+            hod_user = _get_dept_hod_user(dept)
+            if hod_user and hod_user != request.user:
+                notify_list.append(hod_user)
+        except Exception:
             pass
-        else:
-            try:
-                # Find the HOD for this department
-                dept = request.user.teacher_profile.department
-                hod_user = User.objects.filter(
-                    teacher_profile__department=dept,
-                    teacher_profile__designation='hod'
-                ).first()
-                if hod_user and hasattr(hod_user, 'student'):
-                    # Notification model currently expects a Student recipient, 
-                    # but wait, let's see how Notifications work in this app.
-                    pass
-            except Exception:
-                pass
-                
-        # Actually, let's look at Notification model. It requires `recipient=Student`. 
-        # Wait, if Notification is only for Students, we shouldn't use it for HOD/Store Head, 
-        # or we should adjust the Notification model. 
-        # Let's just rely on the dashboards to show completed status, or if we can use django.contrib.messages.
-        
+        send_store_notification(notify_list, notif_msg, store_request=store_req, notif_type='fulfillment')
+
         messages.success(request, "Items receipt confirmed successfully!")
         return redirect('my_store_requests')
 
@@ -1930,3 +2173,218 @@ def my_store_requests(request):
         )
         
     return render(request, 'my_store_requests.html', context)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  STORE NOTIFICATION API VIEWS
+# ═══════════════════════════════════════════════════════════════
+
+@login_required
+def get_store_notifications(request):
+    """API: Return unread store notifications for the logged-in user."""
+    notifs = StoreNotification.objects.filter(
+        recipient=request.user, is_read=False
+    ).select_related('store_request')[:20]
+    data = [{
+        'id':          n.id,
+        'message':     n.message,
+        'type':        n.notif_type,
+        'created_at':  n.created_at.strftime('%d %b %Y, %H:%M'),
+        'request_id':  n.store_request_id,
+        'request_title': n.store_request.title if n.store_request else '',
+    } for n in notifs]
+    return JsonResponse({'status': 'ok', 'notifications': data, 'count': len(data)})
+
+
+@login_required
+@csrf_exempt
+def mark_store_notification_read(request, notif_id):
+    """API: Mark a single store notification as read."""
+    if request.method == 'POST':
+        try:
+            notif = StoreNotification.objects.get(id=notif_id, recipient=request.user)
+            notif.is_read = True
+            notif.save()
+            return JsonResponse({'status': 'ok'})
+        except StoreNotification.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Not found'}, status=404)
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+@csrf_exempt
+def mark_all_store_notifications_read(request):
+    """API: Mark all store notifications as read for the logged-in user."""
+    if request.method == 'POST':
+        StoreNotification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+        return JsonResponse({'status': 'ok'})
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+def submit_assignment(request, material_id):
+    """Student: Submit/Resubmit assignment PDF."""
+    if not hasattr(request.user, 'student'):
+        messages.error(request, 'Access denied. Student profile required.')
+        return redirect('home')
+
+    student = request.user.student
+    assignment = get_object_or_404(CourseMaterial, id=material_id, material_type='assignment')
+
+    if request.method == 'POST':
+        if assignment.due_date and timezone.now() > assignment.due_date:
+            has_approved_request = LateSubmissionRequest.objects.filter(
+                student=student,
+                assignment=assignment,
+                status='Approved'
+            ).exists()
+            if not has_approved_request:
+                messages.error(request, f"Submission failed: The deadline has passed. Please submit an extension request and wait for approval.")
+                return redirect('student_materials')
+
+        file = request.FILES.get('file')
+        remarks = request.POST.get('remarks', '').strip()
+
+        if not file:
+            messages.error(request, 'Please select a PDF file to upload.')
+        elif not file.name.lower().endswith('.pdf'):
+            messages.error(request, 'Only PDF files are allowed.')
+        else:
+            try:
+                submission, created = StudentSubmission.objects.update_or_create(
+                    student=student,
+                    assignment=assignment,
+                    defaults={
+                        'file': file,
+                        'remarks': remarks,
+                        'submitted_at': timezone.now()
+                    }
+                )
+                if created:
+                    messages.success(request, f"Assignment '{assignment.title}' submitted successfully!")
+                else:
+                    messages.success(request, f"Assignment '{assignment.title}' re-submitted successfully!")
+            except Exception as e:
+                messages.error(request, f"Error submitting assignment: {e}")
+
+    return redirect('student_materials')
+
+
+@login_required
+def view_submissions(request, material_id):
+    """Teacher/Admin: View all student submissions for a specific assignment."""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    assignment = get_object_or_404(CourseMaterial, id=material_id, material_type='assignment')
+    
+    if request.user.is_staff and not request.user.is_superuser:
+        if assignment.teacher != request.user:
+            messages.error(request, 'Access denied. You are not the owner of this assignment.')
+            return redirect('teacher_materials')
+
+    submissions = StudentSubmission.objects.filter(assignment=assignment).select_related('student__user')
+    late_requests = LateSubmissionRequest.objects.filter(assignment=assignment).select_related('student__user')
+
+    return render(request, 'teacher_portal/view_submissions.html', {
+        'assignment': assignment,
+        'submissions': submissions,
+        'late_requests': late_requests,
+    })
+
+
+@login_required
+def grade_submission(request, submission_id):
+    """Teacher/Admin: Grade and provide feedback for a student submission."""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    submission = get_object_or_404(StudentSubmission, id=submission_id)
+    assignment = submission.assignment
+
+    if request.user.is_staff and not request.user.is_superuser:
+        if assignment.teacher != request.user:
+            messages.error(request, 'Access denied.')
+            return redirect('teacher_materials')
+
+    if request.method == 'POST':
+        grade = request.POST.get('grade', '').strip()
+        feedback = request.POST.get('feedback', '').strip()
+
+        try:
+            submission.grade = grade
+            submission.feedback = feedback
+            submission.save()
+            messages.success(request, f"Submission graded successfully for {submission.student.name}.")
+        except Exception as e:
+            messages.error(request, f"Error saving grade: {e}")
+
+    return redirect('view_submissions', material_id=assignment.id)
+
+
+@login_required
+def request_late_submission(request, material_id):
+    """Student: Submit a late submission / extension request."""
+    if not hasattr(request.user, 'student'):
+        messages.error(request, 'Access denied. Student profile required.')
+        return redirect('home')
+
+    student = request.user.student
+    assignment = get_object_or_404(CourseMaterial, id=material_id, material_type='assignment')
+
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '').strip()
+
+        if not reason:
+            messages.error(request, 'Please provide a reason for your request.')
+        else:
+            try:
+                LateSubmissionRequest.objects.update_or_create(
+                    student=student,
+                    assignment=assignment,
+                    defaults={
+                        'reason': reason,
+                        'status': 'Pending',
+                        'resolved_at': None
+                    }
+                )
+                messages.success(request, f"Late submission request for '{assignment.title}' submitted successfully. Waiting for teacher approval.")
+            except Exception as e:
+                messages.error(request, f"Error submitting request: {e}")
+
+    return redirect('student_materials')
+
+
+@login_required
+def resolve_late_request(request, request_id):
+    """Teacher/Admin: Approve or Reject a student's late submission request."""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'Access denied.')
+        return redirect('home')
+
+    late_req = get_object_or_404(LateSubmissionRequest, id=request_id)
+    assignment = late_req.assignment
+
+    if request.user.is_staff and not request.user.is_superuser:
+        if assignment.teacher != request.user:
+            messages.error(request, 'Access denied.')
+            return redirect('teacher_materials')
+
+    if request.method == 'POST':
+        action = request.POST.get('action') # 'approve' or 'reject'
+
+        try:
+            if action == 'approve':
+                late_req.status = 'Approved'
+                messages.success(request, f"Approved late submission request for {late_req.student.name}.")
+            else:
+                late_req.status = 'Rejected'
+                messages.warning(request, f"Rejected late submission request for {late_req.student.name}.")
+            late_req.resolved_at = timezone.now()
+            late_req.save()
+        except Exception as e:
+            messages.error(request, f"Error updating request: {e}")
+
+    return redirect('view_submissions', material_id=assignment.id)

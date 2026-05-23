@@ -200,7 +200,7 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Profile</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}">Student Attendance</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'my_store_requests' %}"><i class="fas fa-boxes me-1"></i>Store Requests</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'teacher_store' %}"><i class="fas fa-store me-1"></i>Store</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'teacher_materials' %}"><i class="fas fa-clipboard-list me-1"></i>Assignment</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'upload_attendance' %}">Take Attendance</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'attendance_list' %}">History</a></li>
                     {% else %}
@@ -211,8 +211,34 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'store_staff_tasks' %}"><i class="fas fa-tasks me-1"></i>My Tasks</a></li>
                     {% else %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'student_dashboard' %}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'student_materials' %}"><i class="fas fa-book me-1"></i>Assignments & Notes</a></li>
                     {% endif %}
                     {% endif %}
+
+                    {% if user.is_staff or user.store_profile or user.is_superuser %}
+                    <!-- Store Notifications Bell -->
+                    <li class="nav-item dropdown me-2" id="storeNotifLi">
+                        <a class="nav-link" href="#" id="storeNotifDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="position:relative;">
+                            <i class="fas fa-bell fs-5"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="storeNotifBadge" style="display: none; font-size: 0.6em; margin-left: -5px; margin-top: 5px;">
+                                0
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="storeNotifDropdown" style="width: 320px; max-height: 400px; overflow-y: auto;" id="storeNotifMenu">
+                            <li>
+                                <div class="dropdown-header d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-dark" style="font-size: 0.9rem;">Notifications</span>
+                                    <button class="btn btn-sm btn-link text-decoration-none py-0 px-1" id="markAllReadBtn" style="font-size: 0.8rem; display: none;">Mark all read</button>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider m-0"></li>
+                            <div id="storeNotifList">
+                                <li><span class="dropdown-item text-muted small text-center py-3">No new notifications</span></li>
+                            </div>
+                        </ul>
+                    </li>
+                    {% endif %}
+
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                             data-bs-toggle="dropdown" aria-expanded="false">
@@ -284,6 +310,87 @@
             icon.classList.add('fa-moon');
         }
     </script>
+
+    {% if user.is_authenticated %}
+    {% if user.is_staff or user.store_profile or user.is_superuser %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const notifBadge = document.getElementById('storeNotifBadge');
+            const notifList = document.getElementById('storeNotifList');
+            const markAllBtn = document.getElementById('markAllReadBtn');
+
+            function fetchStoreNotifications() {
+                fetch("{% url 'get_store_notifications' %}")
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'ok') {
+                            if (data.count > 0) {
+                                notifBadge.textContent = data.count > 99 ? '99+' : data.count;
+                                notifBadge.style.display = 'inline-block';
+                                if(markAllBtn) markAllBtn.style.display = 'block';
+                                
+                                let html = '';
+                                data.notifications.forEach(n => {
+                                    let icon = 'fa-info-circle text-primary';
+                                    if(n.type === 'status_update') icon = 'fa-sync text-info';
+                                    else if(n.type === 'fulfillment') icon = 'fa-check-circle text-success';
+                                    else if(n.type === 'store_action') icon = 'fa-box text-warning';
+                                    else if(n.type === 'hod_action') icon = 'fa-user-tie text-danger';
+
+                                    html += `
+                                        <li>
+                                            <a class="dropdown-item py-2 border-bottom" href="#" onclick="markRead(${n.id}, event)" style="white-space: normal;">
+                                                <div class="d-flex">
+                                                    <div class="me-2 mt-1"><i class="fas ${icon}"></i></div>
+                                                    <div>
+                                                        <div class="small text-wrap" style="color: var(--bs-body-color);">${n.message}</div>
+                                                        <div class="text-muted mt-1" style="font-size: 0.75rem;">${n.created_at}</div>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    `;
+                                });
+                                notifList.innerHTML = html;
+                            } else {
+                                notifBadge.style.display = 'none';
+                                if(markAllBtn) markAllBtn.style.display = 'none';
+                                notifList.innerHTML = '<li><span class="dropdown-item text-muted small text-center py-3">No new notifications</span></li>';
+                            }
+                        }
+                    })
+                    .catch(err => console.error("Error fetching notifications:", err));
+            }
+
+            window.markRead = function(id, e) {
+                if(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                fetch(`/store_notifications/read/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                }).then(() => fetchStoreNotifications());
+            };
+
+            if(markAllBtn) {
+                markAllBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fetch("{% url 'mark_all_store_notifications_read' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                    }).then(() => fetchStoreNotifications());
+                });
+            }
+
+            // Initial fetch and poll every 15 seconds
+            fetchStoreNotifications();
+            setInterval(fetchStoreNotifications, 15000);
+        });
+    </script>
+    {% endif %}
+    {% endif %}
 </body>
 
 </html>
