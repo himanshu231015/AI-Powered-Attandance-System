@@ -14,6 +14,7 @@ class Student(models.Model):
     year = models.CharField(max_length=10, null=True, blank=True)
     section = models.CharField(max_length=10, null=True, blank=True)
     plain_password = models.CharField(max_length=128, null=True, blank=True)  # For display purposes only
+    is_registered = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

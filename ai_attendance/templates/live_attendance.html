@@ -79,6 +79,7 @@
     let stream = null;
     let autoInterval = null;
     let isProcessing = false;
+    const loggedRolls = new Set();
 
     // Django context variables
     const CLASS_SUBJECT = "{{ subject|default:'' }}";
@@ -140,6 +141,10 @@
             startBtn.disabled = true;
             stopBtn.disabled = false;
             scanBtn.disabled = false;
+
+            // Clear log and deduplication set for new session
+            loggedRolls.clear();
+            logList.innerHTML = '<li class="list-group-item text-muted text-center">Scanning started...</li>';
 
             if (autoMode.checked) {
                 startAutoScan();
@@ -233,15 +238,16 @@
 
         results.forEach(res => {
             const [top, right, bottom, left] = res.location;
+            const isUnknown = !res.roll_number || res.name.startsWith('Unknown');
 
             // Draw box
-            ctx.strokeStyle = res.name === 'Unknown' ? 'red' : '#0f0';
+            ctx.strokeStyle = isUnknown ? 'red' : '#0f0';
             ctx.lineWidth = 3;
             ctx.strokeRect(left, top, right - left, bottom - top);
 
             // Draw label background
-            ctx.fillStyle = res.name === 'Unknown' ? 'red' : '#0f0';
-            const text = res.name === 'Unknown' ? 'Unknown' : `${res.name} (${res.status})`;
+            ctx.fillStyle = isUnknown ? 'red' : '#0f0';
+            const text = isUnknown ? 'Unknown' : `${res.name} (${res.status})`;
             const textWidth = ctx.measureText(text).width;
             ctx.fillRect(left, top - 25, textWidth + 10, 25);
 
@@ -261,7 +267,13 @@
         }
 
         results.forEach(res => {
-            if (res.name === 'Unknown') return;
+            if (res.name === 'Unknown' || !res.roll_number) return;
+
+            // Deduplicate: only show each student once in the Live Log list
+            if (loggedRolls.has(res.roll_number)) {
+                return;
+            }
+            loggedRolls.add(res.roll_number);
 
             const time = new Date().toLocaleTimeString();
             const item = document.createElement('li');

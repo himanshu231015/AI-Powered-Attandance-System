@@ -5,33 +5,33 @@
 <div class="row">
     <!-- Sidebar Navigation -->
     <div class="col-md-3 mb-4">
-        <div class="list-group shadow sticky-top" style="top: 20px; z-index: 100;">
-            <div class="list-group-item bg-primary text-white fw-bold">
-                <i class="fas fa-bars me-2"></i>Dashboard Menu
+        <div class="list-group shadow-sm border-0 sticky-top" style="top: 90px; z-index: 100; border-radius: var(--card-radius); overflow: hidden;">
+            <div class="list-group-item bg-primary text-white fw-bold py-3 border-0">
+                <i class="fas fa-bars me-2"></i>Portal Navigation
             </div>
-            <a href="#" class="list-group-item list-group-item-action list-group-item-light"
-                data-section="home-section">
-                <i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard
+            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center"
+                data-section="home-section" style="transition: all 0.2s ease;">
+                <i class="fas fa-tachometer-alt me-3 text-primary fs-5"></i><span>Dashboard</span>
             </a>
-            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="profile">
-                <i class="fas fa-user me-2 text-primary"></i>Profile Details
+            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="profile" style="transition: all 0.2s ease;">
+                <i class="fas fa-user me-3 text-primary fs-5"></i><span>Profile Details</span>
             </a>
-            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="overall">
-                <i class="fas fa-chart-pie me-2 text-info"></i>Overall Attendance
+            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="overall" style="transition: all 0.2s ease;">
+                <i class="fas fa-chart-pie me-3 text-info fs-5"></i><span>Overall Attendance</span>
             </a>
-            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="subject">
-                <i class="fas fa-tasks me-2 text-success"></i>Subject Attendance
+            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="subject" style="transition: all 0.2s ease;">
+                <i class="fas fa-tasks me-3 text-success fs-5"></i><span>Subject Attendance</span>
             </a>
-            <a href="#" class="list-group-item list-group-item-action list-group-item-light" data-section="history">
-                <i class="fas fa-history me-2 text-warning"></i>Attendance History
+            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="history" style="transition: all 0.2s ease;">
+                <i class="fas fa-history me-3 text-warning fs-5"></i><span>Attendance History</span>
             </a>
-            <a href="{% url 'change_password' %}" class="list-group-item list-group-item-action list-group-item-light">
-                <i class="fas fa-key me-2 text-dark"></i>Change Password
+            <a href="{% url 'change_password' %}" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" style="transition: all 0.2s ease;">
+                <i class="fas fa-key me-3 text-dark fs-5"></i><span>Change Password</span>
             </a>
-            <a href="#" class="list-group-item list-group-item-action list-group-item-light"
-                data-section="notifications">
-                <i class="fas fa-bell me-2 text-danger"></i>Notifications
-                <span id="notification-badge" class="badge bg-danger rounded-pill float-end"
+            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center"
+                data-section="notifications" style="transition: all 0.2s ease;">
+                <i class="fas fa-bell me-3 text-danger fs-5"></i><span>Notifications</span>
+                <span id="notification-badge" class="badge bg-danger rounded-pill ms-auto"
                     style="display: none;">0</span>
             </a>
         </div>
@@ -42,42 +42,42 @@
 
         <!-- Home Section (Visible by Default) -->
         <div id="home-section" class="content-section">
-            <div class="card shadow border-primary mb-4">
+            <div class="card border-0 mb-4">
                 <div class="card-body text-center p-5">
-                    <div class="mb-4">
-                        <i class="fas fa-user-graduate fa-5x text-primary"></i>
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4 shadow-sm" 
+                         style="width: 100px; height: 100px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
+                        <i class="fas fa-user-graduate fa-3x"></i>
                     </div>
-                    <h2 class="display-5 fw-bold text-dark">{{ student.name }}</h2>
-                    <p class="lead text-muted mb-4">Student Profile</p>
+                    <h2 class="fw-extrabold mb-1" style="font-weight: 800; letter-spacing: -0.5px;">{{ student.name }}</h2>
+                    <p class="text-muted small mb-4">Active Student Profile</p>
 
                     <div class="row justify-content-center">
                         <div class="col-md-8">
-                            <ul class="list-group list-group-flush text-start">
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold">Roll Number</span>
-                                    <span>{{ student.roll_number }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold">Branch / Department</span>
-                                    <span>{{ student.department|default:"Not Assigned" }}</span>
-                                </li>
-                                <!-- Year is not in model, omitting as per plan -->
-                            </ul>
+                            <div class="p-3 bg-light-custom rounded-4 text-start border border-color-custom">
+                                <div class="d-flex justify-content-between py-2 border-bottom border-color-custom">
+                                    <span class="fw-bold text-muted small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Roll Number</span>
+                                    <span class="fw-bold">{{ student.roll_number }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-2">
+                                    <span class="fw-bold text-muted small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Branch / Department</span>
+                                    <span class="fw-bold">{{ student.department|default:"Not Assigned" }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Holiday Calendar Card -->
-            <div class="card shadow border-success mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Holiday Calendar</h5>
+            <div class="card border-0 mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-calendar-alt me-2 text-success"></i>Holiday Calendar</h5>
                 </div>
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(-1)"><i
                                 class="fas fa-chevron-left"></i></button>
-                        <h5 id="calendar-month-year" class="mb-0 fw-bold"></h5>
+                        <h6 id="calendar-month-year" class="mb-0 fw-bold"></h6>
                         <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(1)"><i
                                 class="fas fa-chevron-right"></i></button>
                     </div>
@@ -98,32 +98,36 @@
                     </div>
 
                     <div class="mt-3 small text-muted">
-                        <span class="d-inline-block rounded p-1 bg-danger text-white me-2">Weekend</span>
-                        <span>Sat & Sun are Holidays</span>
+                        <span class="d-inline-block rounded px-2 py-1 bg-danger text-white me-2" style="font-size: 0.72rem;">Weekend</span>
+                        <span>Saturday & Sunday are campus holidays</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Section: Profile -->
-        <div id="profile" class="card shadow mb-4 content-section" style="display: none;">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-user me-2"></i>Profile Details</h5>
-                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal"
+        <div id="profile" class="card border-0 mb-4 content-section" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-user-circle me-2 text-primary"></i>Profile Details</h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
                     data-bs-target="#editProfileModal">
-                    <i class="fas fa-edit me-2"></i>Edit
+                    <i class="fas fa-edit me-2"></i>Edit Profile
                 </button>
             </div>
             <div class="card-body">
-                <div class="row">
+                <div class="row g-4">
                     <div class="col-md-6">
-                        <p><strong>Email:</strong> {{ student.email|default:"Not set" }}</p>
-                        <p><strong>Phone:</strong> {{ student.phone_number|default:"Not set" }}</p>
-                        <p><strong>Department:</strong> {{ student.department|default:"Not set" }}</p>
+                        <div class="p-3 bg-light-custom rounded-4 border border-color-custom">
+                            <p class="mb-2"><strong class="text-muted small text-uppercase">Email:</strong> <span class="d-block fw-bold mt-1">{{ student.email|default:"Not set" }}</span></p>
+                            <p class="mb-2"><strong class="text-muted small text-uppercase">Phone:</strong> <span class="d-block fw-bold mt-1">{{ student.phone_number|default:"Not set" }}</span></p>
+                            <p class="mb-0"><strong class="text-muted small text-uppercase">Department:</strong> <span class="d-block fw-bold mt-1">{{ student.department|default:"Not set" }}</span></p>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Date of Birth:</strong> {{ student.date_of_birth|default:"Not set" }}</p>
-                        <p><strong>Address:</strong> {{ student.address|default:"Not set" }}</p>
+                        <div class="p-3 bg-light-custom rounded-4 border border-color-custom">
+                            <p class="mb-2"><strong class="text-muted small text-uppercase">Date of Birth:</strong> <span class="d-block fw-bold mt-1">{{ student.date_of_birth|default:"Not set" }}</span></p>
+                            <p class="mb-0"><strong class="text-muted small text-uppercase">Address:</strong> <span class="d-block fw-bold mt-1">{{ student.address|default:"Not set" }}</span></p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -131,29 +135,35 @@
 
         <!-- Section: Overall Stats & Projection -->
         <div id="overall" class="content-section" style="display: none;">
-            <div class="row">
+            <div class="row g-4 w-100 m-0">
                 <!-- Card 1: Current Attendance -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card shadow h-100 border-primary">
-                        <div class="card-body text-center">
-                            <h5 class="card-title text-primary"><i class="fas fa-check-circle me-2"></i>Current
-                                Attendance</h5>
-                            <h2 class="display-4 fw-bold">{{ current_attendance_count }}</h2>
-                            <p class="text-muted">Classes Attended</p>
+                    <div class="card border-0 h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
+                                 style="width: 50px; height: 50px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
+                                <i class="fas fa-check-circle fs-5"></i>
+                            </div>
+                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Current Attendance</h5>
+                            <h2 class="display-6 fw-extrabold mb-1 text-primary">{{ current_attendance_count }}</h2>
+                            <p class="text-muted small mb-0">Classes Attended</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Card 2: Overall Attendance -->
+                <!-- Card 2: Overall Attendance Percentage -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card shadow h-100 border-info">
-                        <div class="card-body text-center">
-                            <h5 class="card-title text-info"><i class="fas fa-chart-pie me-2"></i>Overall Attendance
-                            </h5>
-                            <h2 class="display-4 fw-bold">{{ overall_percentage }}%</h2>
-                            <p class="text-muted">Total Classes Held: {{ total_classes }}</p>
+                    <div class="card border-0 h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
+                                 style="width: 50px; height: 50px; background: rgba(2, 132, 199, 0.08); color: #0284c7;">
+                                <i class="fas fa-chart-pie fs-5"></i>
+                            </div>
+                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Overall Percentage</h5>
+                            <h2 class="display-6 fw-extrabold mb-1 text-info">{{ overall_percentage }}%</h2>
+                            <p class="text-muted small mb-3">Total Classes Held: {{ total_classes }}</p>
                             <!-- Progress Line -->
-                            <div class="progress mt-2" style="height: 10px;">
+                            <div class="progress rounded-pill" style="height: 8px;">
                                 <div class="progress-bar {% if overall_percentage >= 75 %}bg-success{% elif overall_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
                                     role="progressbar" style="width: {{ overall_percentage }}%;">
                                 </div>
@@ -164,12 +174,15 @@
 
                 <!-- Card 3: Next Week Projection -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card shadow border-warning h-100">
-                        <div class="card-body text-center">
-                            <h5 class="card-title text-warning fw-bold">Next Week</h5>
-                            <h2 class="display-4 fw-bold text-dark">{{ prediction_week }}%</h2>
-                            <p class="text-muted mb-2">Projected</p>
-                            <div class="progress" style="height: 8px;">
+                    <div class="card border-0 h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
+                                 style="width: 50px; height: 50px; background: rgba(245, 158, 11, 0.08); color: #f59e0b;">
+                                <i class="fas fa-hourglass-half fs-5"></i>
+                            </div>
+                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Week Projection</h5>
+                            <h2 class="display-6 fw-extrabold mb-2 text-warning">{{ prediction_week }}%</h2>
+                            <div class="progress rounded-pill" style="height: 6px;">
                                 <div class="progress-bar bg-warning" role="progressbar"
                                     style="width: {{ prediction_week }}%;"></div>
                             </div>
@@ -179,12 +192,15 @@
 
                 <!-- Card 4: Next Month Projection -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card shadow h-100 border-custom-purple">
-                        <div class="card-body text-center">
-                            <h5 class="card-title fw-bold text-custom-purple">Next Month</h5>
-                            <h2 class="display-4 fw-bold text-dark">{{ prediction_month }}%</h2>
-                            <p class="text-muted mb-2">Projected</p>
-                            <div class="progress" style="height: 8px;">
+                    <div class="card border-0 h-100">
+                        <div class="card-body text-center p-4">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
+                                 style="width: 50px; height: 50px; background: rgba(111, 66, 193, 0.08); color: #6f42c1;">
+                                <i class="fas fa-calendar-alt fs-5"></i>
+                            </div>
+                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Month Projection</h5>
+                            <h2 class="display-6 fw-extrabold mb-2 text-custom-purple" style="color: #6f42c1 !important;">{{ prediction_month }}%</h2>
+                            <div class="progress rounded-pill" style="height: 6px;">
                                 <div class="progress-bar bg-custom-purple" role="progressbar"
                                     style="width: {{ prediction_month }}%;"></div>
                             </div>
@@ -195,90 +211,94 @@
         </div>
 
         <!-- Section: Attendance Projection Graph -->
-        <div class="card shadow mb-4" id="attendance-graph-section" style="display: none;">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Attendance Projection</h5>
+        <div class="card border-0 mb-4" id="attendance-graph-section" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>Attendance Projection Graph</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <canvas id="attendanceChart" style="max-height: 400px;"></canvas>
             </div>
         </div>
 
         <!-- Section: Subject Attendance -->
-        <div id="subject" class="card shadow mb-4 content-section" style="display: none;">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Subject Attendance</h5>
+        <div id="subject" class="card border-0 mb-4 content-section" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-tasks me-2 text-success"></i>Subject Attendance Breakdown</h5>
             </div>
-            <div class="card-body">
-                <div class="row">
+            <div class="card-body p-4">
+                <div class="row g-4">
                     {% for sub in subject_attendance %}
-                    <div class="col-md-6 mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="fw-bold">{{ sub.subject }}</span>
-                            <span>{{ sub.present }}/{{ sub.total }} ({{ sub.percentage }}%)</span>
-                        </div>
-                        <div class="progress" style="height: 20px;">
-                            <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
-                                role="progressbar" style="width: {{ sub.percentage }}%;"
-                                aria-valuenow="{{ sub.percentage }}" aria-valuemin="0" aria-valuemax="100">
-                                {{ sub.percentage }}%
+                    <div class="col-md-6">
+                        <div class="p-3 rounded-4 border border-color-custom">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-bold" style="font-size: 0.9rem;">{{ sub.subject }}</span>
+                                <span class="small text-muted fw-bold">{{ sub.present }}/{{ sub.total }} classes ({{ sub.percentage }}%)</span>
+                            </div>
+                            <div class="progress rounded-pill" style="height: 14px;">
+                                <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                    role="progressbar" style="width: {{ sub.percentage }}%;"
+                                    aria-valuenow="{{ sub.percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ sub.percentage }}%
+                                </div>
                             </div>
                         </div>
                     </div>
                     {% empty %}
-                    <div class="col-12 text-center text-muted">No attendance data by subject yet.</div>
+                    <div class="col-12 text-center text-muted py-4">No attendance data by subject yet.</div>
                     {% endfor %}
                 </div>
             </div>
         </div>
 
         <!-- Section: Notifications -->
-        <div id="notifications" class="card shadow content-section" style="display: none;">
-            <div class="card-header bg-danger text-white">
-                <h5 class="mb-0"><i class="fas fa-bell me-2"></i>Notifications</h5>
+        <div id="notifications" class="card border-0 content-section" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-bell me-2 text-danger"></i>System Notifications</h5>
             </div>
             <div class="card-body p-0">
-                <ul class="list-group list-group-flush" id="notification-list">
-                    <li class="list-group-item text-center text-muted">No new notifications.</li>
+                <ul class="list-group list-group-flush border-0" id="notification-list">
+                    <li class="list-group-item text-center text-muted py-4 border-0">No new notifications.</li>
                 </ul>
             </div>
         </div>
 
         <!-- Section: History -->
-        <div id="history" class="card shadow content-section" style="display: none;">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0"><i class="fas fa-history me-2"></i>My Attendance History</h5>
+        <div id="history" class="card border-0 content-section" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-history me-2 text-warning"></i>My Attendance History</h5>
             </div>
             <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Subject</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for record in records %}
-                        <tr>
-                            <td>{{ record.date }}</td>
-                            <td>{{ record.time }}</td>
-                            <td>{{ record.subject|default:"-" }}</td>
-                            <td>
-                                <span
-                                    class="badge {% if record.status == 'Absent' %}bg-danger{% else %}bg-success{% endif %}">
-                                    {{ record.status }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center">No attendance records found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Date</th>
+                                <th>Time</th>
+                                <th>Subject</th>
+                                <th class="pe-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr>
+                                <td class="ps-4 fw-bold">{{ record.date }}</td>
+                                <td>{{ record.time }}</td>
+                                <td>{{ record.subject|default:"-" }}</td>
+                                <td class="pe-4">
+                                    <span
+                                        class="badge {% if record.status == 'Absent' %}bg-danger{% else %}bg-success{% endif %}">
+                                        {{ record.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No attendance records found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -441,10 +461,46 @@
 </div>
 
 <style>
+    /* Custom Theme Helpers */
+    .bg-light-custom {
+        background-color: rgba(79, 70, 229, 0.03);
+    }
+    body.dark-mode .bg-light-custom {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    .border-color-custom {
+        border-color: var(--border-color) !important;
+    }
+
+    /* List Group Custom Active State */
+    .list-group-item.active {
+        background: var(--primary-gradient) !important;
+        border-color: transparent !important;
+        color: #ffffff !important;
+    }
+    .list-group-item.active i {
+        color: #ffffff !important;
+    }
+    .list-group-item-action:hover {
+        background-color: rgba(79, 70, 229, 0.05) !important;
+        color: var(--primary-color) !important;
+    }
+    body.dark-mode .list-group-item-action:hover {
+        background-color: rgba(129, 140, 248, 0.08) !important;
+        color: #818cf8 !important;
+    }
+    .list-group-item-action {
+        color: var(--text-main) !important;
+        background-color: var(--bg-card) !important;
+    }
+
+    /* Calendar Component */
     .calendar-container {
-        border: 1px solid #ddd;
-        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
         overflow: hidden;
+        background-color: var(--bg-card);
+        box-shadow: var(--shadow-sm);
     }
 
     .calendar-header,
@@ -455,82 +511,86 @@
     }
 
     .calendar-header div {
-        background-color: #f8f9fa;
-        padding: 10px;
-        font-weight: bold;
-        border-bottom: 1px solid #ddd;
+        background-color: rgba(0, 0, 0, 0.02);
+        padding: 12px 10px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-muted);
     }
 
-    /* Dark mode support for header */
     body.dark-mode .calendar-header div {
-        background-color: #2d2d2d;
-        border-bottom-color: #444;
-        color: #e0e0e0;
+        background-color: rgba(255, 255, 255, 0.02);
+        color: var(--text-muted);
     }
 
     .calendar-days div {
-        padding: 15px;
-        border-bottom: 1px solid #eee;
-        border-right: 1px solid #eee;
-        min-height: 50px;
-        /* Consistent height */
+        padding: 15px 10px;
+        border-bottom: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        min-height: 55px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
     }
 
-    body.dark-mode .calendar-days div {
-        border-color: #444;
-        color: #e0e0e0;
+    .calendar-days div:nth-child(7n) {
+        border-right: none;
     }
 
     .calendar-days div:hover:not(.empty) {
-        background-color: #f0f0f0;
+        background-color: rgba(79, 70, 229, 0.08);
+        color: var(--primary-color);
         cursor: pointer;
     }
 
     body.dark-mode .calendar-days div:hover:not(.empty) {
-        background-color: #3d3d3d;
+        background-color: rgba(129, 140, 248, 0.12);
+        color: #818cf8;
     }
 
     .calendar-days .today {
-        background-color: #e8f5e9;
-        font-weight: bold;
-        border: 2px solid #28a745;
-    }
-
-    body.dark-mode .calendar-days .today {
-        background-color: #1b5e20;
-        border-color: #66bb6a;
+        background-color: rgba(16, 185, 129, 0.1) !important;
+        font-weight: 800;
+        color: #10b981 !important;
+        border: 2px solid #10b981 !important;
+        border-radius: 4px;
     }
 
     .calendar-days .holiday {
-        background-color: #ffebee;
-        color: #c62828;
+        background-color: rgba(244, 63, 94, 0.06);
+        color: #f43f5e;
     }
 
     body.dark-mode .calendar-days .holiday {
-        background-color: #3e2723;
-        /* Darker red/brown */
-        color: #ef9a9a;
+        background-color: rgba(244, 63, 94, 0.12);
+        color: #fb7185;
     }
 
     .calendar-days .empty {
-        background-color: #f9f9f9;
+        background-color: rgba(0, 0, 0, 0.01);
+        color: transparent;
         cursor: default;
     }
 
     body.dark-mode .calendar-days .empty {
-        background-color: #252525;
+        background-color: rgba(255, 255, 255, 0.01);
     }
 
     .text-custom-purple {
-        color: #6f42c1;
+        color: #6f42c1 !important;
     }
 
     .border-custom-purple {
-        border-color: #6f42c1;
+        border-color: #6f42c1 !important;
     }
 
     .bg-custom-purple {
-        background-color: #6f42c1;
+        background-color: #6f42c1 !important;
     }
 </style>
 

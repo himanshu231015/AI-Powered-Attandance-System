@@ -5,6 +5,7 @@ from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notifi
 from .utils import train_model, identify_faces, detect_and_crop_face, get_existing_attendance_record
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
+from django.core.files.base import ContentFile
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
@@ -42,6 +43,14 @@ def login_view(request):
             if user.is_staff:
                 return redirect('teacher_dashboard')
             # Student redirect
+            try:
+                student = user.student
+                if not student.is_registered:
+                    logout(request)
+                    messages.warning(request, "Your account has not been activated. Please verify details and register your face to activate your account.")
+                    return redirect('register')
+            except Student.DoesNotExist:
+                pass
             return redirect('student_dashboard')
         else:
             messages.error(request, 'Invalid username or password.')
@@ -52,17 +61,121 @@ def logout_view(request):
     return redirect('login')
 
 def register(request):
-    if request.method == 'POST':
-        # Basic registration logic or redirect to login
-        # Assuming student registration or similar.
-        # For now, if code was lost, I'll provide a basic implementation 
-        # that redirects to login or handles student creation if that was the intent.
-        # Given the context, I will just render register.html if GET, 
-        # and on POST maybe create a student/user?
-        # Safe bet: If register.html exists, render it.
-        pass 
     return render(request, 'register.html')
 
+@csrf_exempt
+def register_verify(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            roll_number = data.get('roll_number')
+            password = data.get('password')
+        except Exception:
+            return JsonResponse({'status': 'error', 'message': 'Invalid request data.'})
+            
+        user = authenticate(request, username=roll_number, password=password)
+        if user is not None:
+            try:
+                student = user.student
+                if student.is_registered:
+                    return JsonResponse({'status': 'error', 'message': 'Account already activated. Please login directly.'})
+                return JsonResponse({
+                    'status': 'ok',
+                    'student': {
+                        'name': student.name,
+                        'roll_number': student.roll_number,
+                        'department': student.department or '',
+                        'year': student.year or '',
+                        'section': student.section or ''
+                    }
+                })
+            except Student.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'No student profile found linked to this Roll Number.'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid Roll Number or Password.'})
+            
+    return JsonResponse({'status': 'error', 'message': 'GET method not supported.'})
+
+@csrf_exempt
+def register_activate(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            roll_number = data.get('roll_number')
+            password = data.get('password')
+            new_password = data.get('new_password')
+            images = data.get('images')
+        except Exception:
+            return JsonResponse({'status': 'error', 'message': 'Invalid request data.'})
+            
+        user = authenticate(request, username=roll_number, password=password)
+        if user is None:
+            return JsonResponse({'status': 'error', 'message': 'Authentication failed.'})
+            
+        try:
+            student = user.student
+            if student.is_registered:
+                return JsonResponse({'status': 'error', 'message': 'Account already activated.'})
+        except Student.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Student profile not found.'})
+            
+        if not images or len(images) < 5:
+            return JsonResponse({'status': 'error', 'message': 'Please capture all 5 required face angles.'})
+            
+        user.set_password(new_password)
+        user.save()
+        student.plain_password = new_password
+        student.save()
+        
+        folder_name = f"{student.roll_number}_{student.name}"
+        safe_dept = "".join([c for c in (student.department or 'General') if c.isalnum() or c in (' ', '_', '-')]).strip()
+        safe_year = "".join([c for c in str(student.year or '1') if c.isalnum()]).strip()
+        safe_section = "".join([c for c in str(student.section or 'A') if c.isalnum()]).strip()
+        
+        save_dir = os.path.join(settings.DATASET_DIR, safe_dept, safe_year, safe_section, folder_name)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+            
+        fs = FileSystemStorage()
+        success_count = 0
+        angle_names = ["center", "left", "right", "up", "down"]
+        
+        for idx, base64_str in enumerate(images):
+            try:
+                if ';base64,' in base64_str:
+                    img_data = base64_str.split(';base64,')[1]
+                else:
+                    img_data = base64_str
+                    
+                decoded_img = base64.b64decode(img_data)
+                
+                filename = fs.save(f"temp_reg_{student.roll_number}_{angle_names[idx]}.jpg", ContentFile(decoded_img))
+                temp_path = fs.path(filename)
+                
+                if detect_and_crop_face(temp_path, save_dir, folder_name):
+                    success_count += 1
+                    
+                fs.delete(filename)
+            except Exception as e:
+                print(f"Error processing image {idx}: {e}")
+                
+        if success_count == 0:
+            return JsonResponse({'status': 'error', 'message': 'No face could be detected in any of the captured images. Please capture again in a well-lit room.'})
+            
+        train_success, train_msg = train_model()
+        if not train_success:
+            print(f"Model training failed: {train_msg}")
+            
+        student.is_registered = True
+        student.save()
+        
+        # Log user in
+        login(request, user)
+        
+        return JsonResponse({
+            'status': 'ok',
+            'message': f'Account activated successfully! {success_count} face photos processed and model trained.'
+        })
 
 def index(request):
     if request.user.is_authenticated:
@@ -75,6 +188,22 @@ def index(request):
     return redirect('login')
 
 def home(request):
+    if request.user.is_authenticated:
+        if request.user.is_superuser:
+            return redirect('admin_dashboard')
+        elif request.user.is_staff:
+            return redirect('teacher_dashboard')
+        else:
+            try:
+                sp = request.user.store_profile
+                if sp.role == 'head':
+                    return redirect('store_head_dashboard')
+                else:
+                    return redirect('store_staff_tasks')
+            except Exception:
+                pass
+            return redirect('student_dashboard')
+            
     total_students = Student.objects.count()
     total_attendance = AttendanceRecord.objects.count()
     return render(request, 'home.html', {'total_students': total_students, 'total_attendance': total_attendance})
@@ -88,9 +217,14 @@ def train(request):
             messages.success(request, msg)
         else:
             messages.error(request, msg)
-    if request.user.is_superuser:
-        return redirect('admin_dashboard')
-    return redirect('home')
+    if request.user.is_authenticated:
+        if request.user.is_superuser:
+            return redirect('admin_dashboard')
+        elif request.user.is_staff:
+            return redirect('teacher_dashboard')
+        else:
+            return redirect('student_dashboard')
+    return redirect('login')
 
 @login_required
 def upload_attendance(request):
@@ -618,32 +752,38 @@ def add_student(request):
             messages.error(request, f"Error creating user: {e}")
             return redirect('add_student')
         
-        # Create folder with hierarchy: Branch/Year/Section/Roll_Name
-        folder_name = f"{roll_number}_{name}"
-        # Sanitize inputs to prevent path traversal or bad characters
-        safe_dept = "".join([c for c in department if c.isalnum() or c in (' ', '_', '-')]).strip()
-        safe_year = "".join([c for c in str(year) if c.isalnum()]).strip()
-        safe_section = "".join([c for c in str(section) if c.isalnum()]).strip()
-        
-        save_dir = os.path.join(settings.DATASET_DIR, safe_dept, safe_year, safe_section, folder_name)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-            
-        # Process images
-        fs = FileSystemStorage()
+        # Process images if uploaded
         count = 0
-        for img in images:
-            # Save temp
-            filename = fs.save(img.name, img)
-            temp_path = fs.path(filename)
+        if images:
+            folder_name = f"{roll_number}_{name}"
+            safe_dept = "".join([c for c in department if c.isalnum() or c in (' ', '_', '-')]).strip()
+            safe_year = "".join([c for c in str(year) if c.isalnum()]).strip()
+            safe_section = "".join([c for c in str(section) if c.isalnum()]).strip()
             
-            if detect_and_crop_face(temp_path, save_dir, folder_name):
-                count += 1
+            save_dir = os.path.join(settings.DATASET_DIR, safe_dept, safe_year, safe_section, folder_name)
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+                
+            fs = FileSystemStorage()
+            for img in images:
+                filename = fs.save(img.name, img)
+                temp_path = fs.path(filename)
+                
+                if detect_and_crop_face(temp_path, save_dir, folder_name):
+                    count += 1
+                
+                fs.delete(filename)
+                
+            if count >= 5:
+                student.is_registered = True
+                student.save()
+                train_model()
+                messages.success(request, f"Student added with {count} face images. Model retrained.")
+            else:
+                messages.success(request, f"Student added with {count} face images. Student needs to complete registration to activate.")
+        else:
+            messages.success(request, "Student account created successfully. The student can now activate their account and register their face.")
             
-            # Delete temp
-            fs.delete(filename)
-            
-        messages.success(request, f"Student added with {count} face images.")
         return redirect('admin_dashboard')
         
     return render(request, 'add_student.html')

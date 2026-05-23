@@ -198,9 +198,9 @@ def train_model():
         print(f"Error saving cache: {e}")
         
     # Train KNN
-    n_neighbors = int(round(np.sqrt(len(X))))
-    if n_neighbors < 1:
-        n_neighbors = 1
+    # Use 1-NN (nearest neighbor) for face recognition to find the exact closest matching profile
+    # and prevent class density bias (e.g. recognizing as someone else who has more photos).
+    n_neighbors = 1
         
     knn_clf = neighbors.KNeighborsClassifier(n_neighbors=n_neighbors, algorithm='ball_tree', weights='distance')
     knn_clf.fit(X, y)
@@ -242,9 +242,8 @@ def identify_faces(image_path=None, image_content=None):
         else:
             gray = image
         
-        # Lower scaleFactor for more detail, lowered minNeighbors for more sensitivity
-        # RELAXED minNeighbors to 5 (balanced) - 4 was too loose (ghosts), 12 too strict (misses)
-        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+        # Increased minNeighbors to 9 to reduce false positive detections (ghost boxes in the background)
+        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=9, minSize=(60, 60))
         
         haar_face_locations = []
         for (x, y, w, h) in haar_faces_rects:
@@ -318,8 +317,8 @@ def identify_faces(image_path=None, image_content=None):
 
     closest_distances = knn_clf.kneighbors(faces_encodings, n_neighbors=1)
     
-    # Tightened to 0.60 to avoid false positives (0.65 was too loose)
-    threshold = 0.60
+    # Tightened to 0.48 to avoid false positives (0.60 was too loose for small datasets)
+    threshold = 0.48
     are_matches = [closest_distances[0][i][0] <= threshold for i in range(len(faces_encodings))]
     
     predictions = []

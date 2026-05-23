@@ -1,102 +1,655 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-lg mt-4">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-user-plus me-2"></i>Create an Account</h4>
-            </div>
-            <div class="card-body p-4">
-                <form method="post" enctype="multipart/form-data" id="registerForm">
-                    {% csrf_token %}
-                    
-                    <!-- Role Selection -->
-                    <div class="mb-4 text-center">
-                        <label class="form-label d-block fw-bold">I am a:</label>
-                        <div class="btn-group" role="group" aria-label="Role selection">
-                            <input type="radio" class="btn-check" name="role" id="role_student" value="student" checked onchange="toggleFields()">
-                            <label class="btn btn-outline-primary" for="role_student">Student</label>
+<style>
+    /* Wizard Container & Step Cards */
+    .wizard-card {
+        border-radius: 20px;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .step-content {
+        display: none;
+    }
+    
+    .step-content.active {
+        display: block;
+        animation: fadeIn 0.4s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-                            <input type="radio" class="btn-check" name="role" id="role_teacher" value="teacher" onchange="toggleFields()">
-                            <label class="btn btn-outline-primary" for="role_teacher">Teacher</label>
+    /* Progress Indicators */
+    .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        max-width: 400px;
+        margin: 0 auto 2.5rem auto;
+    }
+    
+    .step-indicator::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: var(--border-color);
+        z-index: 1;
+        transform: translateY(-50%);
+    }
+
+    .step-bubble {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background-color: var(--bg-card);
+        border: 2px solid var(--border-color);
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+    
+    .step-bubble.active {
+        border-color: var(--primary-color);
+        background-color: var(--primary-color);
+        color: #ffffff;
+        box-shadow: 0 0 0 4px var(--input-focus);
+    }
+    
+    .step-bubble.completed {
+        border-color: #10b981;
+        background-color: #10b981;
+        color: #ffffff;
+    }
+
+    /* Webcam Viewfinder & Guides */
+    .camera-container {
+        position: relative;
+        width: 100%;
+        max-width: 420px;
+        aspect-ratio: 4/3;
+        margin: 0 auto;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 2px solid var(--border-color);
+        background-color: #000000;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    
+    #webcam {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scaleX(-1); /* Mirror view */
+    }
+    
+    /* Circular Face Overlay Guide */
+    .face-guide-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+    
+    .face-oval {
+        width: 220px;
+        height: 280px;
+        border-radius: 50% / 50%;
+        border: 3px dashed rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Dim outside the oval */
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    
+    .face-oval.detecting {
+        border-color: var(--primary-color);
+        border-style: solid;
+        animation: pulseBorder 1.5s infinite;
+    }
+    
+    .face-oval.success-capture {
+        border-color: #10b981;
+        border-style: solid;
+        box-shadow: 0 0 0 9999px rgba(16, 185, 129, 0.15), 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    }
+    
+    @keyframes pulseBorder {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4), 0 0 0 9999px rgba(0, 0, 0, 0.5); }
+        70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(79, 70, 229, 0), 0 0 0 9999px rgba(0, 0, 0, 0.5); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0), 0 0 0 9999px rgba(0, 0, 0, 0.5); }
+    }
+    
+    /* Scan Line Effect */
+    .scanner-line {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+        box-shadow: 0 0 8px var(--primary-color);
+        animation: scan 3s linear infinite;
+        opacity: 0.7;
+    }
+    
+    @keyframes scan {
+        0% { top: 0%; }
+        50% { top: 100%; }
+        100% { top: 0%; }
+    }
+
+    /* Angle Checklist Grid */
+    .angle-card {
+        background-color: var(--bg-app);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .angle-card.active {
+        border-color: var(--primary-color);
+        background-color: rgba(79, 70, 229, 0.05);
+        transform: translateX(4px);
+    }
+    
+    .angle-card.completed {
+        border-color: rgba(16, 185, 129, 0.3);
+        background-color: rgba(16, 185, 129, 0.04);
+    }
+
+    .angle-status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: var(--border-color);
+    }
+    
+    .active .angle-status-dot {
+        background-color: var(--primary-color);
+        box-shadow: 0 0 0 4px var(--input-focus);
+    }
+    
+    .completed .angle-status-dot {
+        background-color: #10b981;
+    }
+
+    .angle-thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: cover;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-card);
+        display: none;
+    }
+    
+    .completed .angle-thumb {
+        display: block;
+    }
+    
+    .completed .angle-icon-placeholder {
+        display: none;
+    }
+
+    .angle-icon-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        background-color: rgba(0, 0, 0, 0.04);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    body.dark-mode .angle-icon-placeholder {
+        background-color: rgba(255, 255, 255, 0.04);
+    }
+</style>
+
+<div class="row justify-content-center align-items-center" style="min-height: 85vh; padding: 2rem 0;">
+    <div class="col-md-9 col-lg-8">
+        
+        <!-- Step Indicators -->
+        <div class="step-indicator" id="stepIndicator">
+            <div class="step-bubble active" id="bubble-1">1</div>
+            <div class="step-bubble" id="bubble-2">2</div>
+            <div class="step-bubble" id="bubble-3">3</div>
+            <div class="step-bubble" id="bubble-4"><i class="fas fa-check"></i></div>
+        </div>
+
+        <div class="card wizard-card">
+            <div class="card-body p-4 p-md-5">
+                
+                <!-- STEP 1: VERIFICATION -->
+                <div class="step-content active" id="step-1">
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" 
+                             style="width: 60px; height: 60px; background: rgba(79, 70, 229, 0.1); color: var(--primary-color);">
+                            <i class="fas fa-id-card fs-3"></i>
                         </div>
+                        <h3 class="fw-bold mb-1">Verify Student Profile</h3>
+                        <p class="text-muted small">Enter your Roll Number and the temporary password provided by your admin</p>
                     </div>
 
-                    <!-- Common Fields -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
-                            <div class="form-text">This will be your login ID.</div>
+                    <form id="verifyForm" onsubmit="handleVerify(event)">
+                        <div class="mb-3">
+                            <label for="roll_number" class="form-label small fw-bold text-muted">Roll Number</label>
+                            <input type="text" class="form-control" id="roll_number" placeholder="e.g. STU101" required>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email">
-                    </div>
-
-                    <!-- Student Specific Fields -->
-                    <div id="studentFields">
-                        <hr class="my-4">
-                        <h5 class="mb-3 text-muted">Student Details</h5>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="name" class="form-label">Full Name</label>
-                                <input type="text" class="form-control" id="name" name="name">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="roll_number" class="form-label">Roll Number</label>
-                                <input type="text" class="form-control" id="roll_number" name="roll_number">
-                                <div class="form-text">Must be unique.</div>
-                            </div>
-                        </div>
-
                         <div class="mb-4">
-                            <label for="images" class="form-label">Upload Face Photos (Min 5 recommended)</label>
-                            <input type="file" class="form-control" id="images" name="images" multiple accept="image/*">
-                            <div class="form-text">These photos will be used to train the AI to recognize you.</div>
+                            <label for="temp_password" class="form-label small fw-bold text-muted">Temporary Password</label>
+                            <input type="password" class="form-control" id="temp_password" placeholder="••••••••" required>
                         </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg shadow-sm" id="verifyBtn">
+                                Verify Profile <i class="fas fa-arrow-right ms-2 small"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'login' %}" class="btn btn-link small text-decoration-none" style="color: var(--text-muted);">Already activated? <span class="fw-bold" style="color: var(--primary-color);">Login here</span></a>
+                    </div>
+                </div>
+
+                <!-- STEP 2: PASSWORD SETUP -->
+                <div class="step-content" id="step-2">
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" 
+                             style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                            <i class="fas fa-key fs-3"></i>
+                        </div>
+                        <h3 class="fw-bold mb-1">Set Secure Password</h3>
+                        <p class="text-muted small" id="welcomeMsg">Welcome! Please update your account with a secure password</p>
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg">Register</button>
-                        <a href="{% url 'login' %}" class="btn btn-link">Already have an account? Login</a>
+                    <form id="passwordForm" onsubmit="handlePassword(event)">
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label small fw-bold text-muted">New Password</label>
+                            <input type="password" class="form-control" id="new_password" placeholder="Min 6 characters" minlength="6" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="confirm_password" class="form-label small fw-bold text-muted">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirm_password" placeholder="Confirm your new password" minlength="6" required>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <button type="button" class="btn btn-outline-secondary px-4 py-2" onclick="goToStep(1)"><i class="fas fa-arrow-left me-2"></i>Back</button>
+                            <button type="submit" class="btn btn-primary px-4 py-2 flex-grow-1">Continue to Face Setup<i class="fas fa-arrow-right ms-2"></i></button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- STEP 3: FACE CAPTURE -->
+                <div class="step-content" id="step-3">
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold mb-1">Register Face Profiles</h3>
+                        <p class="text-muted small">Align your face inside the circle and rotate as guided to register multiple angles for AI recognition.</p>
                     </div>
-                </form>
+
+                    <div class="row align-items-center g-4">
+                        <!-- Camera Feed Column -->
+                        <div class="col-md-6 text-center">
+                            <div class="camera-container mb-3">
+                                <video id="webcam" autoplay playsinline></video>
+                                <div class="face-guide-overlay">
+                                    <div class="face-oval detecting" id="faceOval"></div>
+                                </div>
+                                <div class="scanner-line"></div>
+                            </div>
+                            
+                            <div id="cameraStatus" class="alert alert-danger py-2 small d-none">Webcam error detail here</div>
+                            
+                            <div class="d-flex justify-content-center gap-2">
+                                <button type="button" class="btn btn-success px-4 py-2 fw-bold shadow-sm" id="captureBtn" onclick="captureAngle()" disabled>
+                                    <i class="fas fa-camera me-2"></i>Capture <span id="currentAngleLabel">Center</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="retryBtn" onclick="resetWebcam()" title="Re-initialize Camera">
+                                    <i class="fas fa-sync"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Angle Checklist Column -->
+                        <div class="col-md-6">
+                            <h5 class="fw-bold small text-uppercase text-muted mb-3" style="letter-spacing: 0.5px;">Capturing Checklist</h5>
+                            <div class="d-flex flex-column gap-2 mb-4">
+                                <div class="angle-card active" id="angle-0">
+                                    <div class="angle-status-dot"></div>
+                                    <div class="flex-grow-1 small fw-bold">1. Front Center (Look Straight)</div>
+                                    <div class="angle-icon-placeholder"><i class="fas fa-user"></i></div>
+                                    <img class="angle-thumb" id="thumb-0" alt="Center Face">
+                                </div>
+                                <div class="angle-card" id="angle-1">
+                                    <div class="angle-status-dot"></div>
+                                    <div class="flex-grow-1 small fw-bold">2. Turn Slightly Left</div>
+                                    <div class="angle-icon-placeholder"><i class="fas fa-chevron-left"></i></div>
+                                    <img class="angle-thumb" id="thumb-1" alt="Left Face">
+                                </div>
+                                <div class="angle-card" id="angle-2">
+                                    <div class="angle-status-dot"></div>
+                                    <div class="flex-grow-1 small fw-bold">3. Turn Slightly Right</div>
+                                    <div class="angle-icon-placeholder"><i class="fas fa-chevron-right"></i></div>
+                                    <img class="angle-thumb" id="thumb-2" alt="Right Face">
+                                </div>
+                                <div class="angle-card" id="angle-3">
+                                    <div class="angle-status-dot"></div>
+                                    <div class="flex-grow-1 small fw-bold">4. Tilt Head Up</div>
+                                    <div class="angle-icon-placeholder"><i class="fas fa-chevron-up"></i></div>
+                                    <img class="angle-thumb" id="thumb-3" alt="Up Face">
+                                </div>
+                                <div class="angle-card" id="angle-4">
+                                    <div class="angle-status-dot"></div>
+                                    <div class="flex-grow-1 small fw-bold">5. Tilt Head Down</div>
+                                    <div class="angle-icon-placeholder"><i class="fas fa-chevron-down"></i></div>
+                                    <img class="angle-thumb" id="thumb-4" alt="Down Face">
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-primary btn-lg shadow-sm" id="completeBtn" onclick="submitRegistration()" disabled>
+                                    Activate & Train Model <i class="fas fa-robot ms-2"></i>
+                                </button>
+                                <button type="button" class="btn btn-link text-decoration-none text-muted small" onclick="goToStep(2)">Back</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: SUCCESS SCREEN -->
+                <div class="step-content text-center" id="step-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" 
+                         style="width: 80px; height: 80px; background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                        <i class="fas fa-check-circle fs-1"></i>
+                    </div>
+                    <h2 class="fw-bold mb-2">Registration Complete!</h2>
+                    <p class="text-muted mb-4">Your account is now activated and your face profiles have been trained successfully into the attendance recognition model.</p>
+                    
+                    <div class="alert alert-success py-2 px-3 small d-inline-block mb-4 shadow-sm" id="successDetail">
+                        5 face angles saved. Model updated.
+                    </div>
+                    
+                    <div class="d-grid max-width-md mx-auto" style="max-width: 280px;">
+                        <a href="{% url 'login' %}" class="btn btn-primary btn-lg shadow-sm">
+                            Go to Dashboard <i class="fas fa-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                </div>
+
             </div>
         </div>
+
     </div>
 </div>
 
 <script>
-    function toggleFields() {
-        const isStudent = document.getElementById('role_student').checked;
-        const studentFields = document.getElementById('studentFields');
-        const nameInput = document.getElementById('name');
-        const rollInput = document.getElementById('roll_number');
-        const imagesInput = document.getElementById('images');
+    // State management
+    let state = {
+        currentStep: 1,
+        rollNumber: '',
+        password: '',
+        newPassword: '',
+        stream: null,
+        capturedImages: [null, null, null, null, null],
+        currentAngleIndex: 0,
+        angles: [
+            { label: 'Front Center', instruction: 'Look straight at the camera' },
+            { label: 'Slightly Left', instruction: 'Turn your face slightly to the left' },
+            { label: 'Slightly Right', instruction: 'Turn your face slightly to the right' },
+            { label: 'Tilt Head Up', instruction: 'Tilt your head slightly upwards' },
+            { label: 'Tilt Head Down', instruction: 'Tilt your head slightly downwards' }
+        ]
+    };
 
-        if (isStudent) {
-            studentFields.style.display = 'block';
-            nameInput.required = true;
-            rollInput.required = true;
-            imagesInput.required = true;
+    const DOM = {
+        webcam: document.getElementById('webcam'),
+        faceOval: document.getElementById('faceOval'),
+        captureBtn: document.getElementById('captureBtn'),
+        cameraStatus: document.getElementById('cameraStatus'),
+        currentAngleLabel: document.getElementById('currentAngleLabel'),
+        completeBtn: document.getElementById('completeBtn'),
+        successDetail: document.getElementById('successDetail')
+    };
+
+    function goToStep(step) {
+        state.currentStep = step;
+        
+        // Update Step contents
+        document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(`step-${step}`).classList.add('active');
+        
+        // Update Indicators
+        for(let i = 1; i <= 4; i++) {
+            const bubble = document.getElementById(`bubble-${i}`);
+            bubble.classList.remove('active', 'completed');
+            if (i < step) {
+                bubble.classList.add('completed');
+            } else if (i === step) {
+                bubble.classList.add('active');
+            }
+        }
+        
+        // Camera handle
+        if (step === 3) {
+            initWebcam();
         } else {
-            studentFields.style.display = 'none';
-            nameInput.required = false;
-            rollInput.required = false;
-            imagesInput.required = false;
+            stopWebcam();
         }
     }
 
-    // Initialize
-    toggleFields();
+    // STEP 1: Verify pre-allocated account
+    function handleVerify(e) {
+        e.preventDefault();
+        const roll = document.getElementById('roll_number').value.trim();
+        const pwd = document.getElementById('temp_password').value;
+        const btn = document.getElementById('verifyBtn');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying Profile...';
+        
+        fetch("{% url 'register_verify' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roll_number: roll, password: pwd })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = 'Verify Profile <i class="fas fa-arrow-right ms-2 small"></i>';
+            
+            if (data.status === 'ok') {
+                state.rollNumber = data.student.roll_number;
+                state.password = pwd;
+                document.getElementById('welcomeMsg').textContent = `Welcome, ${data.student.name}! Please set a secure password for your account.`;
+                goToStep(2);
+            } else {
+                alert(data.message || 'Verification failed. Please verify credentials.');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = 'Verify Profile <i class="fas fa-arrow-right ms-2 small"></i>';
+            console.error(err);
+            alert('Server error occurred during verification.');
+        });
+    }
+
+    // STEP 2: Password setup
+    function handlePassword(e) {
+        e.preventDefault();
+        const nPass = document.getElementById('new_password').value;
+        const cPass = document.getElementById('confirm_password').value;
+        
+        if (nPass !== cPass) {
+            alert('Passwords do not match.');
+            return;
+        }
+        
+        state.newPassword = nPass;
+        goToStep(3);
+    }
+
+    // STEP 3: Camera Operations
+    async function initWebcam() {
+        DOM.cameraStatus.classList.add('d-none');
+        try {
+            state.stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+            });
+            DOM.webcam.srcObject = state.stream;
+            DOM.captureBtn.disabled = false;
+            DOM.faceOval.className = "face-oval detecting";
+        } catch (err) {
+            console.error('Camera access error:', err);
+            DOM.cameraStatus.textContent = "Webcam access denied or unavailable. Please connect a camera and refresh permission.";
+            DOM.cameraStatus.classList.remove('d-none');
+        }
+    }
+
+    function stopWebcam() {
+        if (state.stream) {
+            state.stream.getTracks().forEach(track => track.stop());
+            state.stream = null;
+        }
+    }
+    
+    function resetWebcam() {
+        stopWebcam();
+        initWebcam();
+    }
+
+    function captureAngle() {
+        if (!state.stream) return;
+        
+        // Animate capture flash
+        DOM.faceOval.className = "face-oval success-capture";
+        setTimeout(() => {
+            if (state.currentAngleIndex < 5) DOM.faceOval.className = "face-oval detecting";
+        }, 300);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = DOM.webcam.videoWidth || 640;
+        canvas.height = DOM.webcam.videoHeight || 480;
+        
+        const ctx = canvas.getContext('2d');
+        // Mirror the canvas image to match webcam mirroring
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(DOM.webcam, 0, 0, canvas.width, canvas.height);
+        
+        const base64 = canvas.toDataURL('image/jpeg', 0.95);
+        
+        // Save image to list
+        const idx = state.currentAngleIndex;
+        state.capturedImages[idx] = base64;
+        
+        // Update list status and preview thumbnail
+        const card = document.getElementById(`angle-${idx}`);
+        card.classList.remove('active');
+        card.classList.add('completed');
+        
+        const thumb = document.getElementById(`thumb-${idx}`);
+        thumb.src = base64;
+        
+        // Increment
+        state.currentAngleIndex++;
+        
+        if (state.currentAngleIndex < 5) {
+            // Setup next angle
+            const nextIdx = state.currentAngleIndex;
+            document.getElementById(`angle-${nextIdx}`).classList.add('active');
+            DOM.currentAngleLabel.textContent = state.angles[nextIdx].label;
+            
+            // Instruction toast alert / label change
+            showToastAlert(`Angle saved! Now: ${state.angles[nextIdx].instruction}`);
+        } else {
+            // Done capturing all
+            DOM.captureBtn.disabled = true;
+            DOM.captureBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>All Captured';
+            DOM.completeBtn.disabled = false;
+            DOM.faceOval.className = "face-oval success-capture";
+            showToastAlert("All face angles successfully captured! Ready to activate account.");
+        }
+    }
+
+    // Submit everything to register_activate view
+    function submitRegistration() {
+        const btn = DOM.completeBtn;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Training Face Model...';
+        
+        const payload = {
+            roll_number: state.rollNumber,
+            password: state.password,
+            new_password: state.newPassword,
+            images: state.capturedImages
+        };
+        
+        fetch("{% url 'register_activate' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = 'Activate & Train Model <i class="fas fa-robot ms-2"></i>';
+            
+            if (data.status === 'ok') {
+                DOM.successDetail.textContent = data.message;
+                goToStep(4);
+            } else {
+                alert(data.message || 'Failed to activate account. Make sure faces are clear.');
+                // Allow them to click activate again
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = 'Activate & Train Model <i class="fas fa-robot ms-2"></i>';
+            console.error(err);
+            alert('A server error occurred during face registration training.');
+        });
+    }
+    
+    // Toast alert helper
+    function showToastAlert(msg) {
+        // Quick visual log/toast
+        const toast = document.createElement('div');
+        toast.className = "alert alert-primary py-2 px-3 shadow-sm";
+        toast.style.position = "fixed";
+        toast.style.bottom = "20px";
+        toast.style.right = "20px";
+        toast.style.zIndex = "9999";
+        toast.style.borderRadius = "10px";
+        toast.style.fontSize = "0.85rem";
+        toast.innerHTML = `<i class="fas fa-info-circle me-2"></i>${msg}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
 </script>
 {% endblock %}

@@ -32,7 +32,7 @@ class StudentAdminForm(forms.ModelForm):
 
 class StudentAdmin(admin.ModelAdmin):
     form = StudentAdminForm
-    list_display = ('roll_number', 'name', 'email', 'department', 'year', 'section', 'phone_number', 'plain_password')
+    list_display = ('roll_number', 'name', 'email', 'department', 'year', 'section', 'phone_number', 'plain_password', 'is_registered')
     search_fields = ('name', 'roll_number', 'email', 'department')
     list_filter = ('department', 'year', 'section')
 

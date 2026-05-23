@@ -1,32 +1,36 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="header-title mb-0"><i class="fas fa-file-invoice me-2"></i>Assignment Submissions</h2>
-        <p class="text-muted small mb-0">
-            <strong>Assignment:</strong> {{ assignment.title }} | 
-            <strong>Subject:</strong> {{ assignment.subject }} | 
-            <strong>Class:</strong> {{ assignment.year }} {% if assignment.section %}- Section {{ assignment.section }}{% endif %}
-            {% if assignment.due_date %}
-            | <strong class="text-danger"><i class="far fa-clock me-1"></i>Last Date:</strong> {{ assignment.due_date|date:"d M, Y H:i" }}
-            {% endif %}
-        </p>
+<div class="row my-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+                <h2 class="fw-extrabold mb-1" style="font-weight: 800; letter-spacing: -0.5px;"><i class="fas fa-file-invoice me-2 text-primary"></i>Assignment Submissions</h2>
+                <p class="text-muted small mb-0">
+                    <strong>Assignment:</strong> {{ assignment.title }} | 
+                    <strong>Subject:</strong> {{ assignment.subject }} | 
+                    <strong>Class:</strong> Year {{ assignment.year }} {% if assignment.section %}- Sec {{ assignment.section }}{% endif %}
+                    {% if assignment.due_date %}
+                    | <strong class="text-danger"><i class="far fa-clock me-1"></i>Last Date:</strong> {{ assignment.due_date|date:"d M, Y H:i" }}
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{% url 'teacher_materials' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center" style="font-size: 0.85rem;">
+                <i class="fas fa-arrow-left me-1"></i> Back to Materials
+            </a>
+        </div>
     </div>
-    <a href="{% url 'teacher_materials' %}" class="btn btn-outline-secondary btn-sm">
-        <i class="fas fa-arrow-left me-1"></i> Back to Materials
-    </a>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
-        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-user-graduate text-primary me-2"></i>Submissions List</h5>
-        <span class="badge bg-primary rounded-pill">{{ submissions|length }} submissions</span>
+<div class="card border-0 mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold"><i class="fas fa-user-graduate text-primary me-2"></i>Submissions List</h5>
+        <span class="badge bg-primary rounded-pill text-white">{{ submissions|length }} submissions</span>
     </div>
     <div class="card-body p-0">
         {% if submissions %}
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead>
                     <tr>
                         <th class="ps-4">Student Info</th>
                         <th>Submitted On</th>
@@ -42,54 +46,54 @@
                     <tr>
                         <td class="ps-4">
                             <div class="fw-bold text-dark">{{ s.student.name }}</div>
-                            <small class="text-muted">Roll: {{ s.student.roll_number }}</small>
+                            <small class="text-muted fw-bold">Roll: {{ s.student.roll_number }}</small>
                         </td>
                         <td>
-                            <small class="text-muted d-block">{{ s.submitted_at|date:"d M, Y" }}</small>
-                            <small class="text-muted" style="font-size: 0.75rem;">{{ s.submitted_at|date:"H:i" }}</small>
+                            <small class="text-muted d-block fw-bold">{{ s.submitted_at|date:"d M, Y" }}</small>
+                            <small class="text-muted" style="font-size: 0.72rem;">{{ s.submitted_at|date:"H:i" }}</small>
                             {% if s.is_late %}
-                            <span class="badge bg-danger mt-1 d-block" style="width: fit-content; font-size: 0.65rem;">LATE</span>
+                            <span class="badge bg-danger mt-1 d-block text-white" style="width: fit-content; font-size: 0.62rem; padding: 0.2em 0.5em;">LATE</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if s.remarks %}
-                            <span class="text-muted small d-inline-block text-truncate" style="max-width: 200px;" title="{{ s.remarks }}">{{ s.remarks }}</span>
+                            <span class="text-muted small d-inline-block text-truncate" style="max-width: 150px;" title="{{ s.remarks }}">{{ s.remarks }}</span>
                             {% else %}
-                            <span class="text-muted small text-muted opacity-50">-</span>
+                            <span class="text-muted small opacity-50">-</span>
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{{ s.file.url }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                            <a href="{{ s.file.url }}" target="_blank" class="btn btn-sm btn-outline-danger" style="padding: 0.4rem 0.6rem; font-size: 0.78rem;">
                                 <i class="fas fa-file-pdf me-1"></i>View PDF
                             </a>
                         </td>
                         <td>
                             {% if s.grade %}
-                            <span class="badge bg-success font-monospace fs-6 px-2.5 py-1.5">{{ s.grade }}</span>
+                            <span class="badge bg-success font-monospace px-2.5 py-1.5 text-white" style="font-size: 0.8rem;">{{ s.grade }}</span>
                             {% else %}
-                            <span class="badge bg-secondary">Ungraded</span>
+                            <span class="badge bg-secondary text-white" style="font-size: 0.72rem;">Ungraded</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if s.feedback %}
-                            <span class="text-muted small d-inline-block text-truncate" style="max-width: 200px;" title="{{ s.feedback }}">{{ s.feedback }}</span>
+                            <span class="text-muted small d-inline-block text-truncate" style="max-width: 150px;" title="{{ s.feedback }}">{{ s.feedback }}</span>
                             {% else %}
-                            <span class="text-muted small text-muted opacity-50">-</span>
+                            <span class="text-muted small opacity-50">-</span>
                             {% endif %}
                         </td>
                         <td class="text-end pe-4">
                             <!-- Inline Grading Form -->
-                            <form method="post" action="{% url 'grade_submission' s.id %}" class="row g-2 justify-content-end align-items-center">
+                            <form method="post" action="{% url 'grade_submission' s.id %}" class="row g-2 justify-content-end align-items-center mb-0">
                                 {% csrf_token %}
                                 <div class="col-auto">
-                                    <input type="text" name="grade" class="form-control form-control-sm text-center font-monospace" placeholder="Grade" value="{{ s.grade|default:'' }}" style="width: 70px;" required>
+                                    <input type="text" name="grade" class="form-control form-control-sm text-center font-monospace" placeholder="Grade" value="{{ s.grade|default:'' }}" style="width: 70px; height: 32px; font-size: 0.8rem;" required>
                                 </div>
                                 <div class="col-auto">
-                                    <input type="text" name="feedback" class="form-control form-control-sm" placeholder="Feedback" value="{{ s.feedback|default:'' }}" style="width: 150px;">
+                                    <input type="text" name="feedback" class="form-control form-control-sm" placeholder="Feedback" value="{{ s.feedback|default:'' }}" style="width: 140px; height: 32px; font-size: 0.8rem;">
                                 </div>
                                 <div class="col-auto">
-                                    <button type="submit" class="btn btn-primary btn-sm" title="Save Grade & Feedback">
-                                        <i class="fas fa-save"></i>
+                                    <button type="submit" class="btn btn-primary btn-sm d-flex align-items-center justify-content-center" title="Save Grade & Feedback" style="height: 32px; width: 32px; padding: 0;">
+                                        <i class="fas fa-save" style="font-size: 0.8rem;"></i>
                                     </button>
                                 </div>
                             </form>
@@ -101,24 +105,24 @@
         </div>
         {% else %}
         <div class="text-center py-5 text-muted">
-            <i class="fas fa-inbox fa-3x mb-3 opacity-50"></i>
-            <h5>No submissions yet</h5>
-            <p>Students have not uploaded any solutions for this assignment yet.</p>
+            <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+            <h5 class="fw-bold">No submissions yet</h5>
+            <p class="small">Students have not uploaded any files for this assignment yet.</p>
         </div>
         {% endif %}
     </div>
 </div>
 
-<div class="card shadow-sm border-0 mt-4">
-    <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
-        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-hourglass-half text-warning me-2"></i>Late Submission Requests</h5>
-        <span class="badge bg-warning text-dark rounded-pill">{{ late_requests|length }} requests</span>
+<div class="card border-0 mb-5">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold"><i class="fas fa-hourglass-half text-warning me-2"></i>Late Submission Requests</h5>
+        <span class="badge bg-warning text-dark rounded-pill" style="font-size: 0.72rem;">{{ late_requests|length }} requests</span>
     </div>
     <div class="card-body p-0">
         {% if late_requests %}
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead>
                     <tr>
                         <th class="ps-4">Student Info</th>
                         <th>Reason</th>
@@ -132,37 +136,37 @@
                     <tr>
                         <td class="ps-4">
                             <div class="fw-bold text-dark">{{ r.student.name }}</div>
-                            <small class="text-muted">Roll: {{ r.student.roll_number }}</small>
+                            <small class="text-muted fw-bold">Roll: {{ r.student.roll_number }}</small>
                         </td>
                         <td>
-                            <span class="text-wrap d-inline-block" style="max-width: 350px;">{{ r.reason }}</span>
+                            <span class="text-wrap d-inline-block small fw-medium" style="max-width: 320px;">{{ r.reason }}</span>
                         </td>
                         <td>
-                            <small class="text-muted d-block">{{ r.created_at|date:"d M, Y" }}</small>
-                            <small class="text-muted" style="font-size: 0.75rem;">{{ r.created_at|date:"H:i" }}</small>
+                            <small class="text-muted d-block fw-bold">{{ r.created_at|date:"d M, Y" }}</small>
+                            <small class="text-muted" style="font-size: 0.72rem;">{{ r.created_at|date:"H:i" }}</small>
                         </td>
                         <td>
                             {% if r.status == 'Pending' %}
-                            <span class="badge bg-warning text-dark">Pending</span>
+                            <span class="badge bg-warning text-dark" style="font-size: 0.72rem;">Pending</span>
                             {% elif r.status == 'Approved' %}
-                            <span class="badge bg-success">Approved</span>
+                            <span class="badge bg-success text-white" style="font-size: 0.72rem;">Approved</span>
                             {% else %}
-                            <span class="badge bg-danger">Rejected</span>
+                            <span class="badge bg-danger text-white" style="font-size: 0.72rem;">Rejected</span>
                             {% endif %}
                         </td>
                         <td class="text-end pe-4">
                             {% if r.status == 'Pending' %}
-                            <form method="post" action="{% url 'resolve_late_request' r.id %}" class="d-inline">
+                            <form method="post" action="{% url 'resolve_late_request' r.id %}" class="d-inline mb-0">
                                 {% csrf_token %}
-                                <button type="submit" name="action" value="approve" class="btn btn-sm btn-success me-1">
+                                <button type="submit" name="action" value="approve" class="btn btn-sm btn-success me-1 py-1" style="font-size: 0.75rem;">
                                     <i class="fas fa-check me-1"></i>Approve
                                 </button>
-                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-outline-danger">
+                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-outline-danger py-1" style="font-size: 0.75rem;">
                                     <i class="fas fa-times me-1"></i>Reject
                                 </button>
                             </form>
                             {% else %}
-                            <small class="text-muted italic">Resolved: {{ r.resolved_at|date:"d M, H:i" }}</small>
+                            <small class="text-muted fw-semibold">Resolved: {{ r.resolved_at|date:"d M, H:i" }}</small>
                             {% endif %}
                         </td>
                     </tr>
@@ -173,8 +177,8 @@
         {% else %}
         <div class="text-center py-5 text-muted">
             <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
-            <h5>No late submission requests</h5>
-            <p class="mb-0">There are no pending or resolved extension requests for this assignment.</p>
+            <h5 class="fw-bold">No late submission requests</h5>
+            <p class="small mb-0">There are no pending or resolved extension requests for this assignment.</p>
         </div>
         {% endif %}
     </div>

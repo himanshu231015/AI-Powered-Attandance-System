@@ -1,120 +1,127 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row">
+<div class="row my-4">
     <div class="col-md-12">
-        <h2 class="mb-4 d-flex align-items-center">
-            Hello {{ user.first_name|default:user.username }}
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+                <h2 class="fw-extrabold mb-1" style="font-weight: 800; letter-spacing: -0.5px;">Hello, {{ user.first_name|default:user.username }}</h2>
+                <p class="text-muted small mb-0">Welcome to your teacher portal. Manage active classes and student attendance reports.</p>
+            </div>
             {% if user.teacher_profile.designation == 'hod' %}
-            <span class="badge bg-danger ms-3 fs-6"><i class="fas fa-crown me-1"></i>HOD</span>
+            <span class="badge bg-danger fs-6 shadow-sm"><i class="fas fa-crown me-1"></i>HOD Portal</span>
             {% endif %}
-        </h2>
+        </div>
 
-        <div class="row mb-4">
+        <div class="row mb-4 g-4">
             <div class="col-md-6">
-                <div class="card bg-primary text-white h-100">
-                    <div class="card-body">
+                <div class="card border-0 h-100">
+                    <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="card-title mb-0">My Classes</h6>
-                                <h2 class="mt-2 mb-0">{{ total_classes_count }}</h2>
+                                <p class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">My Classes</p>
+                                <h2 class="display-6 fw-extrabold mb-0">{{ total_classes_count }}</h2>
                             </div>
-                            <i class="fas fa-chalkboard-teacher fa-2x opacity-50"></i>
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle shadow-sm" 
+                                 style="width: 54px; height: 54px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
+                                <i class="fas fa-chalkboard-teacher fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card bg-success text-white h-100">
-                    <div class="card-body">
+                <div class="card border-0 h-100">
+                    <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="card-title mb-0">Total Students</h6>
-                                <h2 class="mt-2 mb-0">{{ total_students_count }}</h2>
+                                <p class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Total Students</p>
+                                <h2 class="display-6 fw-extrabold mb-0">{{ total_students_count }}</h2>
                             </div>
-                            <i class="fas fa-user-graduate fa-2x opacity-50"></i>
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle shadow-sm" 
+                                 style="width: 54px; height: 54px; background: rgba(16, 185, 129, 0.08); color: #10b981;">
+                                <i class="fas fa-user-graduate fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow mb-4">
-            <div class="card-body">
-                <form method="get" class="row g-3">
+        <div class="card border-0 mb-4">
+            <div class="card-body p-4">
+                <form method="get" class="row g-3 align-items-end">
                     <div class="col-md-4">
-                        <label for="year" class="form-label">Year</label>
+                        <label for="year" class="form-label small fw-bold text-muted">Year</label>
                         <input type="text" class="form-control" id="year" name="year" placeholder="e.g. 1"
                             value="{{ selected_year|default:'' }}">
                     </div>
                     <div class="col-md-4">
-                        <label for="section" class="form-label">Section</label>
+                        <label for="section" class="form-label small fw-bold text-muted">Section</label>
                         <input type="text" class="form-control" id="section" name="section" placeholder="e.g. A"
                             value="{{ selected_section|default:'' }}">
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100 py-2">
                             <i class="fas fa-filter me-2"></i>Filter Subjects
                         </button>
                     </div>
                     {% if selected_year or selected_section %}
                     <div class="col-md-12 text-end mt-2">
-                        <a href="{% url 'teacher_dashboard' %}" class="text-danger small">Clear Filters</a>
+                        <a href="{% url 'teacher_dashboard' %}" class="text-danger small text-decoration-none fw-bold"><i class="fas fa-times me-1"></i>Clear Filters</a>
                     </div>
                     {% endif %}
                 </form>
             </div>
         </div>
 
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">My Assigned Classes</h4>
-                </div>
+        <div class="card border-0 mb-5">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-calendar-day me-2 text-primary"></i>My Assigned Classes</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 {% if assigned_classes %}
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
                             <tr>
-                                <th>Subject</th>
+                                <th class="ps-4">Subject</th>
                                 <th>Year</th>
                                 <th>Section</th>
                                 <th>Day</th>
                                 <th>Time</th>
-                                <th class="text-center">Action</th>
+                                <th class="text-center pe-4">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for item in assigned_classes %}
                             <tr>
-                                <td class="fw-bold text-primary">{{ item.subject }}</td>
-                                <td>{{ item.year }}</td>
-                                <td>{{ item.section|default:"-" }}</td>
+                                <td class="fw-bold text-primary ps-4">{{ item.subject }}</td>
+                                <td>Year {{ item.year }}</td>
+                                <td>Section {{ item.section|default:"-" }}</td>
                                 <td>
-                                    <span class="badge bg-info text-dark">{{ item.get_day_display }}</span>
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.72rem;">{{ item.get_day_display }}</span>
                                 </td>
                                 <td>
                                     {% if item.start_time %}
-                                    {{ item.start_time|time:"H:i" }} - {{ item.end_time|time:"H:i" }}
+                                    <i class="far fa-clock me-1 text-muted"></i> {{ item.start_time|time:"H:i" }} - {{ item.end_time|time:"H:i" }}
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center pe-4">
                                     {% if item.is_active %}
-                                    <div class="btn-group" role="group">
+                                    <div class="btn-group shadow-sm" role="group">
                                         <a href="{% url 'live_attendance' %}?subject={{ item.subject }}&year={{ item.year }}&section={{ item.section|default:'' }}"
-                                            class="btn btn-outline-danger btn-sm">
+                                            class="btn btn-outline-danger btn-sm px-3">
                                             <i class="fas fa-video me-1"></i>Live
                                         </a>
                                         <a href="{% url 'upload_attendance' %}?subject={{ item.subject }}&year={{ item.year }}&section={{ item.section|default:'' }}"
-                                            class="btn btn-outline-success btn-sm">
+                                            class="btn btn-outline-success btn-sm px-3">
                                             <i class="fas fa-file-upload me-1"></i>Upload
                                         </a>
                                         <a href="{% url 'manual_attendance' %}?subject={{ item.subject }}&year={{ item.year }}&section={{ item.section|default:'' }}&start_time={{ item.start_time|time:'H:i' }}"
-                                            class="btn btn-outline-primary btn-sm">
+                                            class="btn btn-outline-primary btn-sm px-3">
                                             <i class="fas fa-edit me-1"></i>Manual
                                         </a>
                                     </div>
@@ -128,8 +135,10 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="alert alert-warning">
-                    No classes scheduled for today.
+                <div class="p-4 text-center">
+                    <div class="alert alert-warning rounded-3 d-inline-block px-4 mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>No classes scheduled for today.
+                    </div>
                 </div>
                 {% endif %}
             </div>
