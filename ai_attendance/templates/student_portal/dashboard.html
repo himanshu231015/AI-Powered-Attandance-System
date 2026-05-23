@@ -165,7 +165,7 @@
                             <!-- Progress Line -->
                             <div class="progress rounded-pill" style="height: 8px;">
                                 <div class="progress-bar {% if overall_percentage >= 75 %}bg-success{% elif overall_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
-                                    role="progressbar" style="width: {{ overall_percentage }}%;">
+                                    role="progressbar" style="width: 0%;" data-width="{{ overall_percentage }}">
                                 </div>
                             </div>
                         </div>
@@ -184,7 +184,7 @@
                             <h2 class="display-6 fw-extrabold mb-2 text-warning">{{ prediction_week }}%</h2>
                             <div class="progress rounded-pill" style="height: 6px;">
                                 <div class="progress-bar bg-warning" role="progressbar"
-                                    style="width: {{ prediction_week }}%;"></div>
+                                    style="width: 0%;" data-width="{{ prediction_week }}"></div>
                             </div>
                         </div>
                     </div>
@@ -202,7 +202,7 @@
                             <h2 class="display-6 fw-extrabold mb-2 text-custom-purple" style="color: #6f42c1 !important;">{{ prediction_month }}%</h2>
                             <div class="progress rounded-pill" style="height: 6px;">
                                 <div class="progress-bar bg-custom-purple" role="progressbar"
-                                    style="width: {{ prediction_month }}%;"></div>
+                                    style="width: 0%;" data-width="{{ prediction_month }}"></div>
                             </div>
                         </div>
                     </div>
@@ -236,7 +236,7 @@
                             </div>
                             <div class="progress rounded-pill" style="height: 14px;">
                                 <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
-                                    role="progressbar" style="width: {{ sub.percentage }}%;"
+                                    role="progressbar" style="width: 0%;" data-width="{{ sub.percentage }}"
                                     aria-valuenow="{{ sub.percentage }}" aria-valuemin="0" aria-valuemax="100">
                                     {{ sub.percentage }}%
                                 </div>
@@ -654,11 +654,24 @@
         renderCalendar();
     }
 
+    function initializeProgressBars() {
+        document.querySelectorAll('.progress-bar[data-width]').forEach(bar => {
+            const width = bar.getAttribute('data-width');
+            if (width) {
+                bar.style.width = width + '%';
+            }
+        });
+    }
+
     // Bind to existing DOMContentLoaded or run immediately if late
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', renderCalendar);
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCalendar();
+            initializeProgressBars();
+        });
     } else {
         renderCalendar();
+        initializeProgressBars();
     }
 
     // Notification Logic
