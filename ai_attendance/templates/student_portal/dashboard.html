@@ -2,65 +2,46 @@
 
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<div class="row">
-    <!-- Sidebar Navigation -->
-    <div class="col-md-3 mb-4">
-        <div class="list-group shadow-sm border-0 sticky-top" style="top: 90px; z-index: 100; border-radius: var(--card-radius); overflow: hidden;">
-            <div class="list-group-item bg-primary text-white fw-bold py-3 border-0">
-                <i class="fas fa-bars me-2"></i>Portal Navigation
-            </div>
-            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center"
-                data-section="home-section" style="transition: all 0.2s ease;">
-                <i class="fas fa-tachometer-alt me-3 text-primary fs-5"></i><span>Dashboard</span>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="profile" style="transition: all 0.2s ease;">
-                <i class="fas fa-user me-3 text-primary fs-5"></i><span>Profile Details</span>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="overall" style="transition: all 0.2s ease;">
-                <i class="fas fa-chart-pie me-3 text-info fs-5"></i><span>Overall Attendance</span>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="subject" style="transition: all 0.2s ease;">
-                <i class="fas fa-tasks me-3 text-success fs-5"></i><span>Subject Attendance</span>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" data-section="history" style="transition: all 0.2s ease;">
-                <i class="fas fa-history me-3 text-warning fs-5"></i><span>Attendance History</span>
-            </a>
-            <a href="{% url 'change_password' %}" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center" style="transition: all 0.2s ease;">
-                <i class="fas fa-key me-3 text-dark fs-5"></i><span>Change Password</span>
-            </a>
-            <a href="#" class="list-group-item list-group-item-action border-0 py-3 d-flex align-items-center"
-                data-section="notifications" style="transition: all 0.2s ease;">
-                <i class="fas fa-bell me-3 text-danger fs-5"></i><span>Notifications</span>
-                <span id="notification-badge" class="badge bg-danger rounded-pill ms-auto"
-                    style="display: none;">0</span>
-            </a>
-        </div>
-    </div>
 
-    <!-- Main Content Area -->
-    <div class="col-md-9">
+<div class="row">
+    <!-- Main Content Area (Full Width) -->
+    <div class="col-12">
 
         <!-- Home Section (Visible by Default) -->
         <div id="home-section" class="content-section">
-            <div class="card border-0 mb-4">
-                <div class="card-body text-center p-5">
-                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4 shadow-sm" 
-                         style="width: 100px; height: 100px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
-                        <i class="fas fa-user-graduate fa-3x"></i>
+            <div class="card premium-card mb-4">
+                <div class="profile-banner"></div>
+                <div class="card-body text-center pt-0 px-4 pb-5 position-relative">
+                    <div class="profile-avatar-container">
+                        {% if student.profile_pic %}
+                            <img src="{{ student.profile_pic.url }}" alt="Profile Picture" class="profile-avatar shadow" style="object-fit: cover;">
+                        {% else %}
+                            <div class="profile-avatar shadow">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                        {% endif %}
+                        <span class="status-indicator-dot pulsing-green" title="Active Account"></span>
                     </div>
-                    <h2 class="fw-extrabold mb-1" style="font-weight: 800; letter-spacing: -0.5px;">{{ student.name }}</h2>
-                    <p class="text-muted small mb-4">Active Student Profile</p>
+                    
+                    <h3 class="fw-extrabold mb-1 mt-3" style="font-weight: 800; letter-spacing: -0.5px;">{{ student.name }}</h3>
+                    <div class="badge bg-success-soft text-success px-3 py-1 rounded-pill fw-bold mb-4" style="font-size: 0.75rem;">
+                        <i class="fas fa-check-circle me-1"></i> Active Student Profile
+                    </div>
 
                     <div class="row justify-content-center">
-                        <div class="col-md-8">
-                            <div class="p-3 bg-light-custom rounded-4 text-start border border-color-custom">
-                                <div class="d-flex justify-content-between py-2 border-bottom border-color-custom">
-                                    <span class="fw-bold text-muted small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Roll Number</span>
-                                    <span class="fw-bold">{{ student.roll_number }}</span>
+                        <div class="col-md-10 col-lg-8">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="p-3 info-subcard text-start">
+                                        <span class="info-label"><i class="fas fa-id-card me-1 text-primary"></i> Roll Number</span>
+                                        <span class="info-value">{{ student.roll_number }}</span>
+                                    </div>
                                 </div>
-                                <div class="d-flex justify-content-between py-2">
-                                    <span class="fw-bold text-muted small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Branch / Department</span>
-                                    <span class="fw-bold">{{ student.department|default:"Not Assigned" }}</span>
+                                <div class="col-6">
+                                    <div class="p-3 info-subcard text-start">
+                                        <span class="info-label"><i class="fas fa-university me-1 text-info"></i> Branch / Dept</span>
+                                        <span class="info-value">{{ student.department|default:"Not Assigned" }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -69,64 +50,86 @@
             </div>
 
             <!-- Holiday Calendar Card -->
-            <div class="card border-0 mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-calendar-alt me-2 text-success"></i>Holiday Calendar</h5>
+            <div class="card premium-card mb-4 calendar-card">
+                <div class="card-header premium-card-header d-flex justify-content-between align-items-center bg-gradient-custom">
+                    <h5 class="mb-0 fw-bold text-white"><i class="fas fa-calendar-alt me-2"></i>Holiday Calendar & Events</h5>
+                    <span class="badge bg-white text-primary rounded-pill px-3 py-1 fw-bold fs-7 shadow-sm dynamic-holiday-badge"></span>
                 </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(-1)"><i
-                                class="fas fa-chevron-left"></i></button>
-                        <h6 id="calendar-month-year" class="mb-0 fw-bold"></h6>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(1)"><i
-                                class="fas fa-chevron-right"></i></button>
-                    </div>
+                <div class="card-body p-4">
+                    <div class="row g-4">
+                        <!-- Calendar Side -->
+                        <div class="col-lg-7">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <button class="btn btn-icon-round" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                                <h4 id="calendar-month-year" class="mb-0 fw-extrabold text-main calendar-title"></h4>
+                                <button class="btn btn-icon-round" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                            </div>
 
-                    <div class="calendar-container">
-                        <div class="calendar-header">
-                            <div class="text-danger">Sun</div>
-                            <div>Mon</div>
-                            <div>Tue</div>
-                            <div>Wed</div>
-                            <div>Thu</div>
-                            <div>Fri</div>
-                            <div class="text-danger">Sat</div>
+                            <div class="calendar-container">
+                                <div class="calendar-header">
+                                    <div class="text-danger">Sun</div>
+                                    <div>Mon</div>
+                                    <div>Tue</div>
+                                    <div>Wed</div>
+                                    <div>Thu</div>
+                                    <div>Fri</div>
+                                    <div class="text-danger">Sat</div>
+                                </div>
+                                <div id="calendar-days" class="calendar-days">
+                                    <!-- JS GENERATED -->
+                                </div>
+                            </div>
                         </div>
-                        <div id="calendar-days" class="calendar-days">
-                            <!-- JS GENERATED -->
+                        
+                        <!-- Events / Description Side -->
+                        <div class="col-lg-5">
+                            <div class="d-flex flex-column h-100 justify-content-between">
+                                <div class="holiday-panel">
+                                    <h6 class="fw-bold text-uppercase tracking-wider text-muted mb-3 small d-flex align-items-center gap-2">
+                                        <i class="fas fa-list-ul text-primary"></i> Holidays in <span id="panel-month-name" class="text-primary"></span>
+                                    </h6>
+                                    <div id="holiday-list-container" class="holiday-list-container d-flex flex-column gap-2">
+                                        <!-- Dynamic list of holidays for this month -->
+                                    </div>
+                                </div>
+                                <div class="mt-4 p-3 rounded-4 border border-color-custom bg-soft-blue d-flex align-items-start gap-3 shadow-sm-inset">
+                                    <div class="icon-circle bg-primary-soft text-primary mt-1" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <i class="fas fa-info-circle" style="font-size: 0.9rem;"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold d-block text-main mb-1" style="font-size: 0.85rem;">Standard Weekends</h6>
+                                        <span class="small text-muted" style="font-size: 0.78rem; line-height: 1.4; display: block;">Saturday and Sunday are standard campus holidays. Gazetted holidays are highlighted in gold.</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="mt-3 small text-muted">
-                        <span class="d-inline-block rounded px-2 py-1 bg-danger text-white me-2" style="font-size: 0.72rem;">Weekend</span>
-                        <span>Saturday & Sunday are campus holidays</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Section: Profile -->
-        <div id="profile" class="card border-0 mb-4 content-section" style="display: none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div id="profile" class="card premium-card mb-4 content-section" style="display: none;">
+            <div class="card-header premium-card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-user-circle me-2 text-primary"></i>Profile Details</h5>
-                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
+                <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill" data-bs-toggle="modal"
                     data-bs-target="#editProfileModal">
-                    <i class="fas fa-edit me-2"></i>Edit Profile
+                    <i class="fas fa-edit me-1"></i> Edit Profile
                 </button>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <div class="p-3 bg-light-custom rounded-4 border border-color-custom">
-                            <p class="mb-2"><strong class="text-muted small text-uppercase">Email:</strong> <span class="d-block fw-bold mt-1">{{ student.email|default:"Not set" }}</span></p>
-                            <p class="mb-2"><strong class="text-muted small text-uppercase">Phone:</strong> <span class="d-block fw-bold mt-1">{{ student.phone_number|default:"Not set" }}</span></p>
-                            <p class="mb-0"><strong class="text-muted small text-uppercase">Department:</strong> <span class="d-block fw-bold mt-1">{{ student.department|default:"Not set" }}</span></p>
+                        <div class="p-3 bg-light-custom rounded-4 border border-color-custom h-100">
+                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Email Address</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.email|default:"Not set" }}</span></p>
+                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Phone Number</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.phone_number|default:"Not set" }}</span></p>
+                            <p class="mb-0"><strong class="text-muted small text-uppercase">Department / Branch</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.department|default:"Not set" }}</span></p>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="p-3 bg-light-custom rounded-4 border border-color-custom">
-                            <p class="mb-2"><strong class="text-muted small text-uppercase">Date of Birth:</strong> <span class="d-block fw-bold mt-1">{{ student.date_of_birth|default:"Not set" }}</span></p>
-                            <p class="mb-0"><strong class="text-muted small text-uppercase">Address:</strong> <span class="d-block fw-bold mt-1">{{ student.address|default:"Not set" }}</span></p>
+                        <div class="p-3 bg-light-custom rounded-4 border border-color-custom h-100">
+                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Date of Birth</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.date_of_birth|default:"Not set" }}</span></p>
+                            <p class="mb-0"><strong class="text-muted small text-uppercase">Home Address</strong> <span class="d-block fw-bold mt-1 fs-6" style="line-height: 1.5;">{{ student.address|default:"Not set" }}</span></p>
                         </div>
                     </div>
                 </div>
@@ -138,14 +141,14 @@
             <div class="row g-4 w-100 m-0">
                 <!-- Card 1: Current Attendance -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card border-0 h-100">
+                    <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
                             <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 50px; height: 50px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
-                                <i class="fas fa-check-circle fs-5"></i>
+                                 style="width: 55px; height: 55px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
+                                <i class="fas fa-check-circle fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Current Attendance</h5>
-                            <h2 class="display-6 fw-extrabold mb-1 text-primary">{{ current_attendance_count }}</h2>
+                            <h2 class="display-6 fw-extrabold mb-1 text-primary" style="font-weight: 800;">{{ current_attendance_count }}</h2>
                             <p class="text-muted small mb-0">Classes Attended</p>
                         </div>
                     </div>
@@ -153,17 +156,16 @@
 
                 <!-- Card 2: Overall Attendance Percentage -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card border-0 h-100">
+                    <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
                             <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 50px; height: 50px; background: rgba(2, 132, 199, 0.08); color: #0284c7;">
-                                <i class="fas fa-chart-pie fs-5"></i>
+                                 style="width: 55px; height: 55px; background: rgba(2, 132, 199, 0.08); color: #0284c7;">
+                                <i class="fas fa-chart-pie fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Overall Percentage</h5>
-                            <h2 class="display-6 fw-extrabold mb-1 text-info">{{ overall_percentage }}%</h2>
+                            <h2 class="display-6 fw-extrabold mb-1 text-info" style="font-weight: 800;">{{ overall_percentage }}%</h2>
                             <p class="text-muted small mb-3">Total Classes Held: {{ total_classes }}</p>
-                            <!-- Progress Line -->
-                            <div class="progress rounded-pill" style="height: 8px;">
+                            <div class="progress rounded-pill" style="height: 10px;">
                                 <div class="progress-bar {% if overall_percentage >= 75 %}bg-success{% elif overall_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
                                     role="progressbar" style="width: 0%;" data-width="{{ overall_percentage }}">
                                 </div>
@@ -174,15 +176,15 @@
 
                 <!-- Card 3: Next Week Projection -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card border-0 h-100">
+                    <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
                             <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 50px; height: 50px; background: rgba(245, 158, 11, 0.08); color: #f59e0b;">
-                                <i class="fas fa-hourglass-half fs-5"></i>
+                                 style="width: 55px; height: 55px; background: rgba(245, 158, 11, 0.08); color: #f59e0b;">
+                                <i class="fas fa-hourglass-half fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Week Projection</h5>
-                            <h2 class="display-6 fw-extrabold mb-2 text-warning">{{ prediction_week }}%</h2>
-                            <div class="progress rounded-pill" style="height: 6px;">
+                            <h2 class="display-6 fw-extrabold mb-2 text-warning" style="font-weight: 800;">{{ prediction_week }}%</h2>
+                            <div class="progress rounded-pill" style="height: 8px;">
                                 <div class="progress-bar bg-warning" role="progressbar"
                                     style="width: 0%;" data-width="{{ prediction_week }}"></div>
                             </div>
@@ -192,15 +194,15 @@
 
                 <!-- Card 4: Next Month Projection -->
                 <div class="col-lg-6 col-md-6 mb-4">
-                    <div class="card border-0 h-100">
+                    <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
                             <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 50px; height: 50px; background: rgba(111, 66, 193, 0.08); color: #6f42c1;">
-                                <i class="fas fa-calendar-alt fs-5"></i>
+                                 style="width: 55px; height: 55px; background: rgba(111, 66, 193, 0.08); color: #6f42c1;">
+                                <i class="fas fa-calendar-alt fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Month Projection</h5>
-                            <h2 class="display-6 fw-extrabold mb-2 text-custom-purple" style="color: #6f42c1 !important;">{{ prediction_month }}%</h2>
-                            <div class="progress rounded-pill" style="height: 6px;">
+                            <h2 class="display-6 fw-extrabold mb-2 text-custom-purple" style="color: #6f42c1 !important; font-weight: 800;">{{ prediction_month }}%</h2>
+                            <div class="progress rounded-pill" style="height: 8px;">
                                 <div class="progress-bar bg-custom-purple" role="progressbar"
                                     style="width: 0%;" data-width="{{ prediction_month }}"></div>
                             </div>
@@ -211,8 +213,8 @@
         </div>
 
         <!-- Section: Attendance Projection Graph -->
-        <div class="card border-0 mb-4" id="attendance-graph-section" style="display: none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card premium-card mb-4" id="attendance-graph-section" style="display: none;">
+            <div class="card-header premium-card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>Attendance Projection Graph</h5>
             </div>
             <div class="card-body p-4">
@@ -221,24 +223,28 @@
         </div>
 
         <!-- Section: Subject Attendance -->
-        <div id="subject" class="card border-0 mb-4 content-section" style="display: none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div id="subject" class="card premium-card mb-4 content-section" style="display: none;">
+            <div class="card-header premium-card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-tasks me-2 text-success"></i>Subject Attendance Breakdown</h5>
             </div>
             <div class="card-body p-4">
                 <div class="row g-4">
                     {% for sub in subject_attendance %}
                     <div class="col-md-6">
-                        <div class="p-3 rounded-4 border border-color-custom">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="fw-bold" style="font-size: 0.9rem;">{{ sub.subject }}</span>
-                                <span class="small text-muted fw-bold">{{ sub.present }}/{{ sub.total }} classes ({{ sub.percentage }}%)</span>
+                        <div class="p-3 rounded-4 border border-color-custom bg-light-custom h-100 d-flex flex-column justify-content-between">
+                            <div class="d-flex justify-content-between mb-3 align-items-start">
+                                <span class="fw-bold fs-6" style="color: var(--text-main);">{{ sub.subject }}</span>
+                                <span class="badge bg-primary-soft text-primary rounded px-2 py-1 small fw-bold" style="font-size: 0.72rem;">{{ sub.present }}/{{ sub.total }} Classes</span>
                             </div>
-                            <div class="progress rounded-pill" style="height: 14px;">
-                                <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
-                                    role="progressbar" style="width: 0%;" data-width="{{ sub.percentage }}"
-                                    aria-valuenow="{{ sub.percentage }}" aria-valuemin="0" aria-valuemax="100">
-                                    {{ sub.percentage }}%
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small text-muted fw-bold">Attendance Rate</span>
+                                    <span class="small fw-extrabold {% if sub.percentage >= 75 %}text-success{% elif sub.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ sub.percentage }}%</span>
+                                </div>
+                                <div class="progress rounded-pill" style="height: 12px;">
+                                    <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                        role="progressbar" style="width: 0%;" data-width="{{ sub.percentage }}">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -251,20 +257,20 @@
         </div>
 
         <!-- Section: Notifications -->
-        <div id="notifications" class="card border-0 content-section" style="display: none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div id="notifications" class="card premium-card content-section" style="display: none;">
+            <div class="card-header premium-card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-bell me-2 text-danger"></i>System Notifications</h5>
             </div>
             <div class="card-body p-0">
                 <ul class="list-group list-group-flush border-0" id="notification-list">
-                    <li class="list-group-item text-center text-muted py-4 border-0">No new notifications.</li>
+                    <li class="list-group-item text-center text-muted py-5 border-0">No new notifications.</li>
                 </ul>
             </div>
         </div>
 
         <!-- Section: History -->
-        <div id="history" class="card border-0 content-section" style="display: none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div id="history" class="card premium-card content-section" style="display: none;">
+            <div class="card-header premium-card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-history me-2 text-warning"></i>My Attendance History</h5>
             </div>
             <div class="card-body p-0">
@@ -275,25 +281,28 @@
                                 <th class="ps-4">Date</th>
                                 <th>Time</th>
                                 <th>Subject</th>
-                                <th class="pe-4">Status</th>
+                                <th class="pe-4 text-center" style="width: 140px;">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for record in records %}
                             <tr>
-                                <td class="ps-4 fw-bold">{{ record.date }}</td>
-                                <td>{{ record.time }}</td>
-                                <td>{{ record.subject|default:"-" }}</td>
-                                <td class="pe-4">
+                                <td class="ps-4 fw-bold text-primary">{{ record.date }}</td>
+                                <td class="text-secondary small">{{ record.time }}</td>
+                                <td class="fw-bold">{{ record.subject|default:"-" }}</td>
+                                <td class="pe-4 text-center">
                                     <span
-                                        class="badge {% if record.status == 'Absent' %}bg-danger{% else %}bg-success{% endif %}">
+                                        class="badge rounded-pill px-3 py-1 {% if record.status == 'Absent' %}bg-danger{% else %}bg-success{% endif %} text-uppercase shadow-sm" style="font-size: 0.72rem; letter-spacing: 0.5px;">
                                         {{ record.status }}
                                     </span>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4" class="text-center py-4 text-muted">No attendance records found.</td>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="fas fa-folder-open fa-2x mb-2 d-block opacity-40"></i>
+                                    No attendance records found.
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -308,63 +317,83 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                const links = document.querySelectorAll('.list-group-item[data-section]');
+                const links = document.querySelectorAll('a[data-section]');
                 const sections = document.querySelectorAll('.content-section');
 
                 function showSection(sectionId) {
-                    // Hide all sections
                     sections.forEach(sec => sec.style.display = 'none');
 
-                    // Show target section
                     const target = document.getElementById(sectionId);
                     if (target) {
-                        target.style.display = sectionId === 'overall' ? 'flex' : 'block'; // 'flex' for the row
+                        target.style.display = sectionId === 'overall' ? 'flex' : 'block';
                     }
 
-                    // Handle Graph visibility matching 'overall'
                     const graphSection = document.getElementById('attendance-graph-section');
                     if (graphSection) {
                         graphSection.style.display = sectionId === 'overall' ? 'block' : 'none';
                     }
 
-                    // Update active link state
                     links.forEach(link => {
-                        link.classList.remove('active', 'bg-primary', 'text-white');
-                        link.classList.add('list-group-item-light');
+                        link.classList.remove('active');
                         if (link.getAttribute('data-section') === sectionId) {
-                            link.classList.add('active', 'bg-primary', 'text-white');
-                            link.classList.remove('list-group-item-light');
+                            link.classList.add('active');
                         }
                     });
+
+                    // Highlight Attendance dropdown if active section is part of attendance
+                    const attendanceDropdown = document.getElementById('attendanceDropdown');
+                    if (attendanceDropdown) {
+                        if (['overall', 'subject', 'history'].includes(sectionId)) {
+                            attendanceDropdown.classList.add('active');
+                        } else {
+                            attendanceDropdown.classList.remove('active');
+                        }
+                    }
                 }
 
-                // Attach click events
                 links.forEach(link => {
                     link.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        const sectionId = this.getAttribute('data-section');
-                        showSection(sectionId);
+                        // Prevent navigation if we are currently on the dashboard page
+                        if (window.location.pathname.includes('/student_dashboard/')) {
+                            e.preventDefault();
+                            const sectionId = this.getAttribute('data-section');
+                            showSection(sectionId);
+
+                            // Update URL search params without reloading page
+                            const url = new URL(window.location);
+                            url.searchParams.set('section', sectionId);
+                            window.history.pushState({}, '', url);
+
+                            // Close mobile navbar collapse if open
+                            const navbarCollapse = document.getElementById('navbarNav');
+                            if (navbarCollapse && navbarCollapse.classList.contains('show')) {
+                                const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+                                if (bsCollapse) bsCollapse.hide();
+                            }
+                        }
                     });
                 });
 
-                // Show home by default
-                showSection('home-section');
+                // Check URL parameter for section, default to home-section
+                const urlParams = new URLSearchParams(window.location.search);
+                const sectionParam = urlParams.get('section');
+                if (sectionParam) {
+                    showSection(sectionParam);
+                } else {
+                    showSection('home-section');
+                }
 
-                // Initialize Chart.js
                 // Initialize Chart.js
                 const ctx = document.getElementById('attendanceChart')?.getContext('2d');
-
                 if (ctx) {
-                    // DATA FROM DJANGO - safely parsed from JSON script blocks
                     const overallPct = JSON.parse(document.getElementById('overall-pct-data').textContent || '0');
                     const nextWeekPct = JSON.parse(document.getElementById('prediction-week-data').textContent || '0');
                     const nextMonthPct = JSON.parse(document.getElementById('prediction-month-data').textContent || '0');
 
                     const dataValues = [overallPct, nextWeekPct, nextMonthPct];
 
-                    // Color Logic: Red if < 75, Green if >= 75
-                    const backgroundColors = dataValues.map(value => value < 75 ? 'rgba(220, 53, 69, 0.7)' : 'rgba(25, 135, 84, 0.7)');
-                    const borderColors = dataValues.map(value => value < 75 ? 'rgba(220, 53, 69, 1)' : 'rgba(25, 135, 84, 1)');
+                    const backgroundColors = dataValues.map(value => value < 75 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(16, 185, 129, 0.7)');
+                    const borderColors = dataValues.map(value => value < 75 ? 'rgba(239, 68, 68, 1)' : 'rgba(16, 185, 129, 1)');
 
                     new Chart(ctx, {
                         type: 'bar',
@@ -375,13 +404,14 @@
                                 data: dataValues,
                                 backgroundColor: backgroundColors,
                                 borderColor: borderColors,
-                                borderWidth: 1
+                                borderWidth: 1,
+                                borderRadius: 8
                             },
                             {
                                 label: '75% Criteria',
                                 data: [75, 75, 75],
                                 type: 'line',
-                                borderColor: '#ffc107',
+                                borderColor: '#f59e0b',
                                 borderDash: [5, 5],
                                 pointRadius: 0,
                                 fill: false,
@@ -409,7 +439,228 @@
                         }
                     });
                 }
+
+                // Holiday Calendar Logic
+                let currentDate = new Date();
+                const holidayData = {
+                    0: [
+                        { day: 1, name: "New Year's Day", type: "Gazetted" },
+                        { day: 14, name: "Makar Sankranti", type: "Restricted" },
+                        { day: 26, name: "Republic Day", type: "Gazetted" }
+                    ],
+                    1: [
+                        { day: 14, name: "Maha Shivratri", type: "Gazetted" }
+                    ],
+                    2: [
+                        { day: 14, name: "Holi", type: "Gazetted" }
+                    ],
+                    3: [
+                        { day: 3, name: "Good Friday", type: "Gazetted" },
+                        { day: 12, name: "Eid-ul-Fitr", type: "Gazetted" }
+                    ],
+                    4: [
+                        { day: 1, name: "Labour Day", type: "Gazetted" },
+                        { day: 23, name: "Buddha Purnima", type: "Gazetted" }
+                    ],
+                    5: [
+                        { day: 29, name: "Eid al-Adha", type: "Gazetted" }
+                    ],
+                    6: [
+                        { day: 29, name: "Muharram", type: "Gazetted" }
+                    ],
+                    7: [
+                        { day: 15, name: "Independence Day", type: "Gazetted" },
+                        { day: 28, name: "Janmashtami", type: "Gazetted" }
+                    ],
+                    8: [
+                        { day: 16, name: "Milad-un-Nabi", type: "Gazetted" }
+                    ],
+                    9: [
+                        { day: 2, name: "Gandhi Jayanti", type: "Gazetted" },
+                        { day: 12, name: "Dussehra", type: "Gazetted" }
+                    ],
+                    10: [
+                        { day: 1, name: "Diwali", type: "Gazetted" },
+                        { day: 5, name: "Guru Nanak Jayanti", type: "Gazetted" }
+                    ],
+                    11: [
+                        { day: 25, name: "Christmas Day", type: "Gazetted" }
+                    ]
+                };
+
+                function renderCalendar() {
+                    const calendarDays = document.getElementById('calendar-days');
+                    const monthYear = document.getElementById('calendar-month-year');
+                    const panelMonthName = document.getElementById('panel-month-name');
+                    const holidayListContainer = document.getElementById('holiday-list-container');
+                    const dynamicBadge = document.querySelector('.dynamic-holiday-badge');
+                    
+                    if (!calendarDays || !monthYear) return;
+                    
+                    calendarDays.innerHTML = '';
+                    
+                    // Add fade transition trigger
+                    calendarDays.classList.remove('fade-in-up-anim');
+                    void calendarDays.offsetWidth; // Trigger reflow
+                    calendarDays.classList.add('fade-in-up-anim');
+
+                    const year = currentDate.getFullYear();
+                    const month = currentDate.getMonth();
+
+                    const monthNames = ["January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"
+                    ];
+
+                    monthYear.innerText = `${monthNames[month]} ${year}`;
+                    if (panelMonthName) panelMonthName.innerText = monthNames[month];
+
+                    const firstDay = new Date(year, month, 1).getDay();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                    for (let i = 0; i < firstDay; i++) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = 'empty';
+                        calendarDays.appendChild(emptyDiv);
+                    }
+
+                    const today = new Date();
+                    const currentMonthHolidays = holidayData[month] || [];
+                    
+                    // Generate calendar day grids
+                    for (let i = 1; i <= daysInMonth; i++) {
+                        const dayDiv = document.createElement('div');
+                        dayDiv.className = 'calendar-day-node';
+                        
+                        const dateSpan = document.createElement('span');
+                        dateSpan.className = 'date-number';
+                        dateSpan.innerText = i;
+                        dayDiv.appendChild(dateSpan);
+
+                        const currentDayOfWeek = new Date(year, month, i).getDay();
+                        const isWeekend = currentDayOfWeek === 0 || currentDayOfWeek === 6;
+                        const customHoliday = currentMonthHolidays.find(h => h.day === i);
+
+                        if (isWeekend) {
+                            dayDiv.classList.add('holiday');
+                        }
+
+                        if (customHoliday) {
+                            dayDiv.classList.remove('holiday'); // override weekend if any
+                            dayDiv.classList.add('gazetted-holiday');
+                            dayDiv.setAttribute('title', customHoliday.name);
+                            
+                            // Add a visual dot
+                            const dot = document.createElement('span');
+                            dot.className = 'holiday-dot';
+                            dayDiv.appendChild(dot);
+                        }
+
+                        if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                            dayDiv.classList.add('today');
+                        }
+
+                        calendarDays.appendChild(dayDiv);
+                    }
+
+                    // Render dynamic holiday list
+                    if (holidayListContainer) {
+                        holidayListContainer.innerHTML = '';
+                        let holidayCount = 0;
+                        
+                        // Custom Holidays first
+                        currentMonthHolidays.forEach(h => {
+                            holidayCount++;
+                            const item = document.createElement('div');
+                            item.className = 'holiday-item gazetted';
+                            item.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-center w-100">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="day-badge bg-warning text-dark">${h.day}</div>
+                                        <span class="fw-bold text-main" style="font-size:0.88rem;">${h.name}</span>
+                                    </div>
+                                    <span class="badge bg-warning-soft text-warning fw-extrabold rounded-pill text-uppercase px-2" style="font-size:0.65rem;">${h.type || 'Holiday'}</span>
+                                </div>
+                            `;
+                            holidayListContainer.appendChild(item);
+                        });
+
+                        // Weekend info
+                        const weekends = [];
+                        for (let i = 1; i <= daysInMonth; i++) {
+                            const date = new Date(year, month, i);
+                            if (date.getDay() === 0 || date.getDay() === 6) {
+                                weekends.push(i);
+                            }
+                        }
+                        
+                        if (weekends.length > 0) {
+                            holidayCount += weekends.length;
+                            const weekendItem = document.createElement('div');
+                            weekendItem.className = 'holiday-item weekend';
+                            
+                            // Format weekends nicely (e.g. "May 3, 4, 10, 11...")
+                            const weekendStr = weekends.map(d => `${d}`).join(', ');
+                            weekendItem.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-start w-100 gap-2">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <div class="day-badge bg-danger-soft text-danger"><i class="fas fa-umbrella-beach"></i></div>
+                                        <div>
+                                            <span class="fw-bold text-main d-block" style="font-size:0.88rem;">Weekly Offs</span>
+                                            <span class="text-muted small">Saturdays and Sundays (${weekendStr})</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            holidayListContainer.appendChild(weekendItem);
+                        }
+
+                        if (holidayCount === 0) {
+                            holidayListContainer.innerHTML = `
+                                <div class="text-center text-muted py-4 small">
+                                    <i class="fas fa-calendar-times opacity-40 mb-2 fa-lg d-block"></i>
+                                    No campus holidays scheduled this month.
+                                </div>
+                            `;
+                        }
+
+                        if (dynamicBadge) {
+                            dynamicBadge.innerText = `${currentMonthHolidays.length} Gazetted Holidays`;
+                        }
+                    }
+                }
+
+                window.changeMonth = function(step) {
+                    currentDate.setMonth(currentDate.getMonth() + step);
+                    renderCalendar();
+                }
+
+                renderCalendar();
             });
+
+            function previewDashboardImage(input) {
+                if (input.files && input.files[0]) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var imgContainer = input.closest('.modal-body');
+                        var imgEl = imgContainer.querySelector('img');
+                        var iconEl = imgContainer.querySelector('.rounded-circle');
+                        
+                        if (imgEl) {
+                            imgEl.src = e.target.result;
+                        } else if (iconEl) {
+                            var newImg = document.createElement('img');
+                            newImg.src = e.target.result;
+                            newImg.alt = "Profile Picture";
+                            newImg.className = "rounded-circle shadow border border-2 border-primary mb-2";
+                            newImg.style.width = "80px";
+                            newImg.style.height = "80px";
+                            newImg.style.objectFit = "cover";
+                            iconEl.replaceWith(newImg);
+                        }
+                    }
+                    reader.readAsDataURL(input.files[0]);
+                }
+            }
         </script>
 
     </div> <!-- End Main Content Col -->
@@ -418,42 +669,55 @@
 <!-- Edit Profile Modal -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Profile</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: var(--shadow-lg);">
+            <div class="modal-header bg-primary text-white py-3" style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;">
+                <h5 class="modal-title fw-bold">Edit Profile Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" value="{{ student.email|default:'' }}">
+                <div class="modal-body p-4 text-center">
+                    <!-- Profile Picture Upload -->
+                    <div class="mb-3 text-center">
+                        {% if student.profile_pic %}
+                            <img src="{{ student.profile_pic.url }}" alt="Profile Picture" class="rounded-circle shadow border border-2 border-primary mb-2" style="width: 80px; height: 80px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded-circle shadow border border-2 border-primary d-inline-flex align-items-center justify-content-center bg-primary-soft text-primary mb-2" style="width: 80px; height: 80px; font-size: 2.2rem; background-color: rgba(79, 70, 229, 0.08);">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <label for="dashboard_profile_pic" class="btn btn-xs btn-outline-primary rounded-pill px-3" style="font-size: 0.75rem; font-weight: 600; cursor: pointer;">
+                                <i class="fas fa-camera me-1"></i> Change Photo
+                            </label>
+                            <input type="file" id="dashboard_profile_pic" name="profile_pic" accept="image/*" style="display: none;" onchange="previewDashboardImage(this)">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Phone Number</label>
-                        <input type="text" class="form-control" name="phone_number"
-                            value="{{ student.phone_number|default:'' }}">
+
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">Email Address</label>
+                        <input type="email" class="form-control rounded-3" name="email" value="{{ student.email|default:'' }}">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Department</label>
-                        <input type="text" class="form-control" name="department"
-                            value="{{ student.department|default:'' }}">
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">Phone Number</label>
+                        <input type="text" class="form-control rounded-3" name="phone_number" value="{{ student.phone_number|default:'' }}">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Date of Birth</label>
-                        <input type="date" class="form-control" name="date_of_birth"
-                            value="{{ student.date_of_birth|date:'Y-m-d' }}">
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">Department</label>
+                        <input type="text" class="form-control rounded-3" name="department" value="{{ student.department|default:'' }}">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Address</label>
-                        <textarea class="form-control" name="address"
-                            rows="3">{{ student.address|default:'' }}</textarea>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">Date of Birth</label>
+                        <input type="date" class="form-control rounded-3" name="date_of_birth" value="{{ student.date_of_birth|date:'Y-m-d' }}">
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">Home Address</label>
+                        <textarea class="form-control rounded-3" name="address" rows="3">{{ student.address|default:'' }}</textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                <div class="modal-footer border-0 p-3 bg-light-custom">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4" style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%); border: none;">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -461,124 +725,447 @@
 </div>
 
 <style>
+    /* Premium Design System Styling */
+    .premium-card {
+        border-radius: 20px !important;
+        border: none !important;
+        box-shadow: var(--shadow-sm) !important;
+        background-color: var(--bg-card);
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .premium-card-header {
+        padding: 20px 24px !important;
+    }
+    
+    /* Horizontal Taskbar Styles */
+    .horizontal-taskbar {
+        background-color: var(--bg-card);
+    }
+    .taskbar-nav {
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none; /* Hide scrollbar for Firefox */
+    }
+    .taskbar-nav::-webkit-scrollbar {
+        display: none; /* Hide scrollbar for Chrome/Safari/Webkit */
+    }
+    .taskbar-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 10px 18px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-decoration: none;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+        background-color: transparent;
+        border: 1px solid transparent;
+    }
+    .taskbar-btn i {
+        font-size: 1rem;
+        transition: transform 0.2s ease;
+    }
+    .taskbar-btn:hover {
+        color: var(--primary-color);
+        background-color: rgba(79, 70, 229, 0.04);
+        border-color: rgba(79, 70, 229, 0.05);
+    }
+    body.dark-mode .taskbar-btn:hover {
+        color: #818cf8;
+        background-color: rgba(129, 140, 248, 0.06);
+    }
+    .taskbar-btn:hover i {
+        transform: scale(1.15);
+    }
+    .taskbar-btn.active {
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        border-color: transparent;
+    }
+    
+    /* Hero Profile layout */
+    .profile-banner {
+        height: 120px;
+        background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
+        opacity: 0.95;
+        position: relative;
+    }
+    
+    .profile-banner::after {
+        content: '';
+        position: absolute;
+        width: 140px;
+        height: 140px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        top: -40px;
+        right: -30px;
+    }
+    
+    .profile-avatar-container {
+        position: relative;
+        display: inline-block;
+        margin-top: -55px;
+    }
+    
+    .profile-avatar {
+        width: 105px;
+        height: 105px;
+        background: var(--bg-card);
+        border: 4px solid var(--bg-card);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #4F46E5;
+        font-size: 2.5rem;
+    }
+    
+    body.dark-mode .profile-avatar {
+        color: #818cf8;
+        background: #1e1e2d;
+        border-color: #1e1e2d;
+    }
+    
+    .status-indicator-dot {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2.5px solid var(--bg-card);
+    }
+    
+    .pulsing-green {
+        background-color: #10b981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse 1.6s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+        }
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+        }
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+    
+    .bg-success-soft {
+        background-color: rgba(16, 185, 129, 0.08) !important;
+    }
+    
+    .bg-primary-soft {
+        background-color: rgba(79, 70, 229, 0.08) !important;
+    }
+    
+    .info-subcard {
+        background-color: rgba(79, 70, 229, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .info-subcard:hover {
+        transform: translateY(-2px);
+        background-color: rgba(79, 70, 229, 0.04);
+        border-color: rgba(79, 70, 229, 0.15);
+    }
+    
+    body.dark-mode .info-subcard {
+        background-color: rgba(255, 255, 255, 0.01);
+    }
+    body.dark-mode .info-subcard:hover {
+        background-color: rgba(255, 255, 255, 0.025);
+    }
+    
+    .info-label {
+        font-weight: 700;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .info-value {
+        font-weight: 800;
+        color: var(--text-main);
+        font-size: 1.05rem;
+    }
+
     /* Custom Theme Helpers */
     .bg-light-custom {
-        background-color: rgba(79, 70, 229, 0.03);
+        background-color: rgba(79, 70, 229, 0.02);
     }
     body.dark-mode .bg-light-custom {
-        background-color: rgba(255, 255, 255, 0.02);
+        background-color: rgba(255, 255, 255, 0.01);
     }
     .border-color-custom {
         border-color: var(--border-color) !important;
     }
 
-    /* List Group Custom Active State */
-    .list-group-item.active {
-        background: var(--primary-gradient) !important;
-        border-color: transparent !important;
-        color: #ffffff !important;
+    /* Premium Calendar Card Layout & Styling */
+    .calendar-card {
+        border-radius: 24px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+        border: 1px solid var(--border-color) !important;
+        overflow: hidden;
     }
-    .list-group-item.active i {
-        color: #ffffff !important;
+    
+    .bg-gradient-custom {
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+        border: none !important;
+        position: relative;
     }
-    .list-group-item-action:hover {
-        background-color: rgba(79, 70, 229, 0.05) !important;
-        color: var(--primary-color) !important;
+
+    .bg-gradient-custom::after {
+        content: '';
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        top: -60px;
+        right: -30px;
     }
-    body.dark-mode .list-group-item-action:hover {
-        background-color: rgba(129, 140, 248, 0.08) !important;
-        color: #818cf8 !important;
+
+    .btn-icon-round {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        color: var(--text-main);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .list-group-item-action {
-        color: var(--text-main) !important;
-        background-color: var(--bg-card) !important;
+
+    .btn-icon-round:hover {
+        background: var(--primary-color);
+        color: #ffffff;
+        border-color: var(--primary-color);
+        transform: scale(1.1);
+        box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+    }
+
+    .calendar-title {
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: var(--text-main);
     }
 
     /* Calendar Component */
     .calendar-container {
         border: 1px solid var(--border-color);
-        border-radius: 12px;
+        border-radius: 20px;
         overflow: hidden;
-        background-color: var(--bg-card);
+        background: rgba(255, 255, 255, 0.01);
+        backdrop-filter: blur(10px);
         box-shadow: var(--shadow-sm);
     }
 
-    .calendar-header,
+    .calendar-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        background-color: rgba(79, 70, 229, 0.03);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .calendar-header div {
+        padding: 16px 10px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+
     .calendar-days {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         text-align: center;
     }
 
-    .calendar-header div {
-        background-color: rgba(0, 0, 0, 0.02);
-        padding: 12px 10px;
-        font-weight: 700;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid var(--border-color);
-        color: var(--text-muted);
-    }
-
-    body.dark-mode .calendar-header div {
-        background-color: rgba(255, 255, 255, 0.02);
-        color: var(--text-muted);
-    }
-
-    .calendar-days div {
-        padding: 15px 10px;
+    .calendar-days div.empty {
+        background: transparent;
         border-bottom: 1px solid var(--border-color);
         border-right: 1px solid var(--border-color);
-        min-height: 55px;
-        font-weight: 500;
+        cursor: default;
+    }
+
+    .calendar-day-node {
+        position: relative;
+        padding: 18px 10px;
+        border-bottom: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        min-height: 72px;
+        font-weight: 700;
+        color: var(--text-main);
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s ease;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1;
     }
 
     .calendar-days div:nth-child(7n) {
         border-right: none;
     }
 
-    .calendar-days div:hover:not(.empty) {
-        background-color: rgba(79, 70, 229, 0.08);
-        color: var(--primary-color);
+    .calendar-day-node .date-number {
+        font-size: 1.05rem;
+        z-index: 2;
+    }
+
+    /* Hover effect */
+    .calendar-day-node:hover:not(.empty) {
+        background-color: rgba(79, 70, 229, 0.06);
+        transform: scale(1.08);
+        border-radius: 12px;
+        z-index: 3;
+        box-shadow: 0 8px 24px rgba(79, 70, 229, 0.15);
         cursor: pointer;
     }
 
-    body.dark-mode .calendar-days div:hover:not(.empty) {
+    body.dark-mode .calendar-day-node:hover:not(.empty) {
         background-color: rgba(129, 140, 248, 0.12);
-        color: #818cf8;
+        box-shadow: 0 8px 24px rgba(129, 140, 248, 0.2);
     }
 
-    .calendar-days .today {
-        background-color: rgba(16, 185, 129, 0.1) !important;
-        font-weight: 800;
-        color: #10b981 !important;
-        border: 2px solid #10b981 !important;
-        border-radius: 4px;
+    /* Today node */
+    .calendar-day-node.today {
+        background-color: rgba(79, 70, 229, 0.06) !important;
+        color: var(--primary-color) !important;
+        border: 2px solid var(--primary-color) !important;
+        border-radius: 12px !important;
     }
 
-    .calendar-days .holiday {
-        background-color: rgba(244, 63, 94, 0.06);
+    /* Weekend Holiday Node */
+    .calendar-day-node.holiday {
+        background-color: rgba(244, 63, 94, 0.03);
         color: #f43f5e;
     }
-
-    body.dark-mode .calendar-days .holiday {
-        background-color: rgba(244, 63, 94, 0.12);
+    
+    body.dark-mode .calendar-day-node.holiday {
+        background-color: rgba(244, 63, 94, 0.06);
         color: #fb7185;
     }
 
-    .calendar-days .empty {
-        background-color: rgba(0, 0, 0, 0.01);
-        color: transparent;
-        cursor: default;
+    /* Gazetted Holiday Node */
+    .calendar-day-node.gazetted-holiday {
+        background-color: rgba(245, 158, 11, 0.05);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.3) !important;
     }
 
-    body.dark-mode .calendar-days .empty {
-        background-color: rgba(255, 255, 255, 0.01);
+    body.dark-mode .calendar-day-node.gazetted-holiday {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: #fbbf24;
+    }
+
+    .holiday-dot {
+        width: 6px;
+        height: 6px;
+        background-color: #f59e0b;
+        border-radius: 50%;
+        margin-top: 4px;
+        box-shadow: 0 0 8px #f59e0b;
+    }
+
+    /* Events Panel Styling */
+    .holiday-panel {
+        max-height: 250px;
+        overflow-y: auto;
+        padding-right: 4px;
+        scrollbar-width: thin;
+    }
+
+    .holiday-panel::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .holiday-panel::-webkit-scrollbar-thumb {
+        background-color: var(--border-color);
+        border-radius: 10px;
+    }
+
+    .holiday-item {
+        padding: 12px 16px;
+        border-radius: 14px;
+        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.01);
+        transition: all 0.2s ease;
+    }
+
+    .holiday-item:hover {
+        transform: translateX(4px);
+        background: rgba(79, 70, 229, 0.02);
+        border-color: rgba(79, 70, 229, 0.15);
+    }
+
+    .holiday-item.gazetted {
+        border-left: 4px solid #f59e0b !important;
+    }
+
+    .holiday-item.weekend {
+        border-left: 4px solid #f43f5e !important;
+    }
+
+    .day-badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.8rem;
+    }
+
+    .bg-danger-soft {
+        background-color: rgba(244, 63, 94, 0.08) !important;
+    }
+
+    .bg-warning-soft {
+        background-color: rgba(245, 158, 11, 0.08) !important;
+    }
+
+    .bg-soft-blue {
+        background-color: rgba(79, 70, 229, 0.02);
+    }
+    
+    /* Animation definition */
+    .fade-in-up-anim {
+        animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fadeInUp {
+        0% {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .text-custom-purple {
@@ -593,158 +1180,4 @@
         background-color: #6f42c1 !important;
     }
 </style>
-
-<script>
-    let currentDate = new Date();
-
-    function renderCalendar() {
-        const monthYear = document.getElementById('calendar-month-year');
-        const calendarDays = document.getElementById('calendar-days');
-
-        if (!monthYear || !calendarDays) return;
-
-        calendarDays.innerHTML = '';
-
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth(); // 0-11
-
-        const monthNames = ["January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ];
-
-        monthYear.innerText = `${monthNames[month]} ${year}`;
-
-        // First day of the month (0=Sun, 1=Mon...)
-        const firstDay = new Date(year, month, 1).getDay();
-        // Days in month
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        // Add empty cells for previous month
-        for (let i = 0; i < firstDay; i++) {
-            const emptyDiv = document.createElement('div');
-            emptyDiv.className = 'empty';
-            calendarDays.appendChild(emptyDiv);
-        }
-
-        // Add days
-        const today = new Date();
-
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dayDiv = document.createElement('div');
-            dayDiv.innerText = i;
-
-            // Check day of week for this date to mark holiday
-            const currentDayOfWeek = new Date(year, month, i).getDay();
-
-            if (currentDayOfWeek === 0 || currentDayOfWeek === 6) {
-                dayDiv.classList.add('holiday');
-            }
-
-            // Mark Today
-            if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                dayDiv.classList.add('today');
-            }
-
-            calendarDays.appendChild(dayDiv);
-        }
-    }
-
-    function changeMonth(step) {
-        currentDate.setMonth(currentDate.getMonth() + step);
-        renderCalendar();
-    }
-
-    function initializeProgressBars() {
-        document.querySelectorAll('.progress-bar[data-width]').forEach(bar => {
-            const width = bar.getAttribute('data-width');
-            if (width) {
-                bar.style.width = width + '%';
-            }
-        });
-    }
-
-    // Bind to existing DOMContentLoaded or run immediately if late
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            renderCalendar();
-            initializeProgressBars();
-        });
-    } else {
-        renderCalendar();
-        initializeProgressBars();
-    }
-
-    // Notification Logic
-    function fetchNotifications() {
-        document.getElementById('notification-badge').style.display = 'none'; // reset initially
-        fetch("{% url 'get_notifications' %}")
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const badge = document.getElementById('notification-badge');
-                    const list = document.getElementById('notification-list');
-
-                    if (data.count > 0) {
-                        badge.innerText = data.count;
-                        badge.style.display = 'inline-block';
-
-                        // Update list
-                        let html = '';
-                        data.notifications.forEach(notif => {
-                            html += `
-                                <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
-                                    <div>
-                                        <div class="fw-bold">${notif.message}</div>
-                                        <small class="text-muted"><i class="fas fa-clock me-1"></i>${notif.created_at}</small>
-                                    </div>
-                                    <button class="btn btn-sm btn-outline-success" onclick="markRead(${notif.id}, this)">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                </li>
-                            `;
-                        });
-                        list.innerHTML = html;
-                    } else {
-                        badge.style.display = 'none';
-                        list.innerHTML = '<li class="list-group-item text-center text-muted">No new notifications.</li>';
-                    }
-                }
-            })
-            .catch(err => console.error('Error fetching notifications:', err));
-    }
-
-    // Mark Read function (Global scope for onclick)
-    window.markRead = function (id, btn) {
-        fetch(`/core/notifications/read/${id}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Remove item from UI instantly for better UX
-                    const li = btn.closest('li');
-                    li.remove();
-
-                    // Update badge count
-                    const badge = document.getElementById('notification-badge');
-                    let count = parseInt(badge.innerText || '0');
-                    count = Math.max(0, count - 1);
-                    badge.innerText = count;
-                    if (count === 0) {
-                        badge.style.display = 'none';
-                        document.getElementById('notification-list').innerHTML = '<li class="list-group-item text-center text-muted">No new notifications.</li>';
-                    }
-                }
-            });
-    };
-
-    // Poll every 10 seconds
-    setInterval(fetchNotifications, 10000);
-    // Initial call
-    fetchNotifications();
-</script>
 {% endblock %}

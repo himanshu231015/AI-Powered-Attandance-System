@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
-from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest, TeacherProfile, StoreStaff, StoreRequest, StoreRequestItem, StoreNotification, CourseMaterial, StudentSubmission, LateSubmissionRequest
+from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest, TeacherProfile, StoreStaff, StoreRequest, StoreRequestItem, StoreNotification, CourseMaterial, StudentSubmission, LateSubmissionRequest, ClassCoordinator, StudentApplication
 from .utils import train_model, identify_faces, detect_and_crop_face, get_existing_attendance_record
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -22,6 +22,8 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('index')
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -281,6 +283,13 @@ def upload_attendance(request):
                         pred['status'] = f"Wrong Section ({student.section})"
                         final_predictions.append(pred)
                         continue
+                    # Verify student belongs to this department/branch if section is a department code
+                    dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+                    if section and section.upper() in dept_codes:
+                        if not student.department or section.lower() not in student.department.lower():
+                            pred['status'] = f"Wrong Branch ({student.department})"
+                            final_predictions.append(pred)
+                            continue
                         
                     status_text = "Marked Present"
                     if subject:
@@ -342,6 +351,10 @@ def upload_attendance(request):
                 filter_kwargs['section'] = section
                 
             class_students = Student.objects.filter(**filter_kwargs)
+            # If section name is a department code, ensure student's department also matches to avoid cross-branch matching
+            dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+            if section and section.upper() in dept_codes:
+                class_students = class_students.filter(department__icontains=section)
             
             for student in class_students:
                 if student.roll_number not in present_roll_numbers:
@@ -390,6 +403,10 @@ def manual_attendance(request):
         students = Student.objects.filter(year__icontains=year)
         if section:
             students = students.filter(section__icontains=section)
+            # If section name is a department code, ensure student's department also matches to avoid cross-branch matching
+            dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+            if section.upper() in dept_codes:
+                students = students.filter(department__icontains=section)
         students = students.order_by('roll_number')
 
     if request.method == 'POST':
@@ -635,6 +652,12 @@ def process_live_frame(request):
                                 if req_section:
                                     if str(student.section).lower() != str(req_section).lower():
                                         continue # Skip wrong section
+                                    
+                                    # Verify student belongs to this department/branch if section is a department code
+                                    dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+                                    if req_section.upper() in dept_codes:
+                                        if not student.department or req_section.lower() not in student.department.lower():
+                                            continue # Skip wrong branch/department
                                         
                                 can_mark = True
                                 
@@ -701,9 +724,29 @@ def add_teacher(request):
         designation = request.POST.get('designation', 'asst_prof')
         department  = request.POST.get('department', 'CSE')
 
+        # Coordinator fields
+        is_coord    = request.POST.get('is_coordinator') == 'on'
+        coord_dept  = request.POST.get('coord_department', '').strip()
+        coord_year  = request.POST.get('coord_year', '').strip()
+        coord_sec   = request.POST.get('coord_section', '').strip()
+
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
             return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
+
+        if is_coord:
+            if not coord_dept or not coord_year or not coord_sec:
+                messages.error(request, "All coordinator class fields (Department, Year, Section) are required when 'Assign as Class Coordinator' is checked.")
+                return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
+
+            existing_other = ClassCoordinator.objects.filter(
+                department=coord_dept,
+                year=coord_year,
+                section=coord_sec
+            ).first()
+            if existing_other:
+                messages.error(request, f"Class {coord_dept} Year {coord_year}-{coord_sec} is already assigned to coordinator: {existing_other.teacher.username}.")
+                return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
 
         try:
             user = User.objects.create_user(username=username, email=email, password=password)
@@ -714,6 +757,15 @@ def add_teacher(request):
                 designation=designation,
                 department=department
             )
+
+            if is_coord:
+                ClassCoordinator.objects.create(
+                    teacher=user,
+                    department=coord_dept,
+                    year=coord_year,
+                    section=coord_sec
+                )
+
             messages.success(request, f"Teacher '{username}' added to {department} department!")
             return redirect('admin_dashboard')
         except Exception as e:
@@ -1015,6 +1067,8 @@ def edit_teacher(request, teacher_id):
     teacher = get_object_or_404(User, id=teacher_id, is_staff=True, is_superuser=False)
     profile, _ = TeacherProfile.objects.get_or_create(user=teacher)
     dept_choices = TeacherProfile.DEPARTMENT_CHOICES
+    
+    coordinator = ClassCoordinator.objects.filter(teacher=teacher).first()
 
     if request.method == 'POST':
         username    = request.POST.get('username', '').strip()
@@ -1023,9 +1077,40 @@ def edit_teacher(request, teacher_id):
         designation = request.POST.get('designation', 'asst_prof')
         department  = request.POST.get('department', 'CSE')
 
+        # Coordinator post fields
+        is_coord    = request.POST.get('is_coordinator') == 'on'
+        coord_dept  = request.POST.get('coord_department', '').strip()
+        coord_year  = request.POST.get('coord_year', '').strip()
+        coord_sec   = request.POST.get('coord_section', '').strip()
+
         if User.objects.filter(username=username).exclude(pk=teacher.pk).exists():
             messages.error(request, "Username already taken by another user.")
             return redirect('edit_teacher', teacher_id=teacher_id)
+
+        if is_coord:
+            if not coord_dept or not coord_year or not coord_sec:
+                messages.error(request, "All coordinator class fields (Department, Year, Section) are required when 'Assign as Class Coordinator' is checked.")
+                return redirect('edit_teacher', teacher_id=teacher_id)
+
+            existing_other = ClassCoordinator.objects.filter(
+                department=coord_dept,
+                year=coord_year,
+                section=coord_sec
+            ).exclude(teacher=teacher).first()
+            if existing_other:
+                messages.error(request, f"Class {coord_dept} Year {coord_year}-{coord_sec} is already assigned to coordinator: {existing_other.teacher.username}.")
+                return redirect('edit_teacher', teacher_id=teacher_id)
+
+            ClassCoordinator.objects.update_or_create(
+                teacher=teacher,
+                defaults={
+                    'department': coord_dept,
+                    'year': coord_year,
+                    'section': coord_sec
+                }
+            )
+        else:
+            ClassCoordinator.objects.filter(teacher=teacher).delete()
 
         teacher.username = username
         teacher.email    = email
@@ -1044,6 +1129,7 @@ def edit_teacher(request, teacher_id):
         'teacher':      teacher,
         'profile':      profile,
         'dept_choices': dept_choices,
+        'coordinator':  coordinator,
     })
 
 @user_passes_test(lambda u: u.is_superuser)
@@ -1106,19 +1192,56 @@ def review_assessment_request(request, request_id):
 
 @login_required
 def profile(request):
+    is_student = hasattr(request.user, 'student')
+    student = request.user.student if is_student else None
+
     if request.method == 'POST':
         user = request.user
-        user.first_name = request.POST.get('first_name')
-        user.last_name = request.POST.get('last_name')
-        user.email = request.POST.get('email')
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        
+        user.first_name = first_name
+        user.last_name = last_name
+        user.email = email
+        
         try:
             user.save()
+            
+            if is_student and student:
+                student.name = f"{first_name} {last_name}".strip()
+                student.email = email
+                student.phone_number = request.POST.get('phone_number', '').strip()
+                student.address = request.POST.get('address', '').strip()
+                
+                dob = request.POST.get('date_of_birth')
+                if dob:
+                    student.date_of_birth = dob
+                
+                if 'profile_pic' in request.FILES:
+                    student.profile_pic = request.FILES['profile_pic']
+                
+                student.save()
+                
             messages.success(request, "Profile updated successfully.")
         except Exception as e:
             messages.error(request, f"Error updating profile: {e}")
         return redirect('profile')
-        
-    return render(request, 'profile.html', {'user': request.user})
+
+    user = request.user
+    if is_student and student:
+        if not user.first_name and not user.last_name:
+            name_parts = student.name.split(' ', 1)
+            user.first_name = name_parts[0]
+            user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        if not user.email:
+            user.email = student.email or ''
+
+    return render(request, 'profile.html', {
+        'user': user,
+        'is_student': is_student,
+        'student': student
+    })
 
 @login_required
 def change_password(request):
@@ -1174,6 +1297,9 @@ def student_dashboard(request):
             if dob:
                 student.date_of_birth = dob
             
+            if 'profile_pic' in request.FILES:
+                student.profile_pic = request.FILES['profile_pic']
+                
             student.save()
             messages.success(request, "Profile updated successfully!")
             return redirect('student_dashboard')
@@ -1279,6 +1405,10 @@ def teacher_dashboard(request):
         q = Student.objects.filter(year__icontains=year)
         if section:
             q = q.filter(section__icontains=section)
+            # If section name is a department code, ensure student's department also matches to avoid cross-branch matching
+            dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+            if section.upper() in dept_codes:
+                q = q.filter(department__icontains=section)
         ids = q.values_list('id', flat=True)
         relevant_students_ids.update(ids)
         
@@ -2528,3 +2658,439 @@ def resolve_late_request(request, request_id):
             messages.error(request, f"Error updating request: {e}")
 
     return redirect('view_submissions', material_id=assignment.id)
+
+
+@login_required
+def student_applications(request):
+    try:
+        student = request.user.student
+    except Student.DoesNotExist:
+        messages.error(request, 'Access denied. Only students can view this page.')
+        return redirect('index')
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        attachment = request.FILES.get('attachment')
+
+        if not title or not description:
+            messages.error(request, 'Title and description are required.')
+        else:
+            # Resolve coordinator
+            coordinator = ClassCoordinator.objects.filter(
+                department=student.department,
+                year=student.year,
+                section=student.section
+            ).first()
+            
+            if not coordinator:
+                dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+                if student.section and student.section.upper() in dept_codes:
+                    coordinator = ClassCoordinator.objects.filter(
+                        year=student.year,
+                        section=student.section
+                    ).first()
+
+            StudentApplication.objects.create(
+                student=student,
+                title=title,
+                description=description,
+                attachment=attachment
+            )
+            
+            if coordinator:
+                messages.success(request, f"Application '{title}' submitted successfully to coordinator {coordinator.teacher.get_full_name() or coordinator.teacher.username}.")
+            else:
+                messages.warning(request, f"Application '{title}' submitted, but no Class Coordinator is currently assigned for your class.")
+
+            return redirect('student_applications')
+
+    applications = StudentApplication.objects.filter(student=student)
+    coordinator = ClassCoordinator.objects.filter(
+        department=student.department,
+        year=student.year,
+        section=student.section
+    ).first()
+    
+    if not coordinator:
+        dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+        if student.section and student.section.upper() in dept_codes:
+            coordinator = ClassCoordinator.objects.filter(
+                year=student.year,
+                section=student.section
+            ).first()
+
+    return render(request, 'student_portal/applications.html', {
+        'student': student,
+        'applications': applications,
+        'coordinator': coordinator
+    })
+
+
+@login_required
+def coordinator_dashboard(request):
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied.')
+        return redirect('index')
+
+    coordinators = ClassCoordinator.objects.filter(teacher=request.user)
+    if not coordinators.exists():
+        return render(request, 'teacher_portal/coordinator_dashboard.html', {
+            'no_coord': True
+        })
+
+    coord_id = request.GET.get('coordinator_id')
+    if coord_id:
+        current_coord = get_object_or_404(ClassCoordinator, id=coord_id, teacher=request.user)
+    else:
+        current_coord = coordinators.first()
+
+    students = Student.objects.filter(
+        year=current_coord.year,
+        section=current_coord.section
+    )
+    dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+    if current_coord.section and current_coord.section.upper() in dept_codes:
+        students = students.filter(department__icontains=current_coord.section)
+    else:
+        students = students.filter(department__icontains=current_coord.department)
+    students = students.order_by('roll_number')
+
+    applications = StudentApplication.objects.filter(student__in=students)
+    pending_applications_count = applications.filter(status='Pending').count()
+
+    # Attendance Matrix
+    records = AttendanceRecord.objects.filter(student__in=students)
+    attendance_cols = records.values_list('date', 'subject').distinct().order_by('-date', 'subject')[:30]
+
+    cols_headers = [{'date': date, 'subject': subject} for date, subject in attendance_cols]
+
+    attendance_matrix = []
+    for s in students:
+        s_records = { (r.date, r.subject): r.status for r in records.filter(student=s) }
+        statuses = []
+        for date, subject in attendance_cols:
+            status = s_records.get((date, subject), '-')
+            statuses.append(status)
+        
+        present_count = sum(1 for status in statuses if status == 'Present')
+        total_count = sum(1 for status in statuses if status in ('Present', 'Absent'))
+        pct = round((present_count / total_count * 100) if total_count > 0 else 0, 1)
+
+        attendance_matrix.append({
+            'student': s,
+            'statuses': statuses,
+            'present_count': present_count,
+            'total_count': total_count,
+            'percentage': pct
+        })
+
+    return render(request, 'teacher_portal/coordinator_dashboard.html', {
+        'no_coord': False,
+        'coordinators': coordinators,
+        'current_coord': current_coord,
+        'students': students,
+        'applications': applications,
+        'pending_applications_count': pending_applications_count,
+        'cols_headers': cols_headers,
+        'attendance_matrix': attendance_matrix,
+    })
+
+
+@login_required
+def coordinator_resolve_application(request, app_id):
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied.')
+        return redirect('index')
+
+    application = get_object_or_404(StudentApplication, id=app_id)
+    student = application.student
+
+    # Find if the logged-in teacher is the coordinator for this student
+    coordinators = ClassCoordinator.objects.filter(teacher=request.user)
+    is_coordinator = False
+    dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+    
+    for coord in coordinators:
+        if coord.year == student.year and coord.section == student.section:
+            if coord.section and coord.section.upper() in dept_codes:
+                if coord.section.upper() in student.department.upper():
+                    is_coordinator = True
+                    break
+            else:
+                if coord.department.upper() in student.department.upper():
+                    is_coordinator = True
+                    break
+
+    if not is_coordinator:
+        messages.error(request, 'Access denied. You are not the coordinator for this student.')
+        return redirect('coordinator_dashboard')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        remarks = request.POST.get('remarks', '').strip()
+
+        if action == 'approve':
+            application.status = 'Approved'
+            messages.success(request, f"Application of {application.student.name} approved.")
+        elif action == 'reject':
+            application.status = 'Rejected'
+            messages.warning(request, f"Application of {application.student.name} rejected.")
+        
+        application.remarks = remarks
+        application.save()
+
+    return redirect('coordinator_dashboard')
+
+
+@login_required
+def export_coordinator_attendance_excel(request, coord_id):
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'Access denied.')
+        return redirect('index')
+
+    if request.user.is_superuser:
+        coordinator = get_object_or_404(ClassCoordinator, id=coord_id)
+    else:
+        coordinator = get_object_or_404(ClassCoordinator, id=coord_id, teacher=request.user)
+
+    students = Student.objects.filter(
+        year=coordinator.year,
+        section=coordinator.section
+    )
+    dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
+    if coordinator.section and coordinator.section.upper() in dept_codes:
+        students = students.filter(department__icontains=coordinator.section)
+    else:
+        students = students.filter(department__icontains=coordinator.department)
+    students = students.order_by('roll_number')
+
+    records = AttendanceRecord.objects.filter(student__in=students)
+    col_pairs = list(records.values_list('date', 'subject').distinct().order_by('date', 'subject'))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Attendance Sheet"
+    ws.views.sheetView[0].showGridLines = True
+
+    thin_border = Border(
+        left=Side(style='thin', color='D0D0D0'),
+        right=Side(style='thin', color='D0D0D0'),
+        top=Side(style='thin', color='D0D0D0'),
+        bottom=Side(style='thin', color='D0D0D0')
+    )
+
+    max_col = max(3, 4 + len(col_pairs) - 1)
+
+    # 1. Title Row (Row 1)
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
+    title_cell = ws['A1']
+    YEAR_ROMAN = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
+    try:
+        yr_val = int(coordinator.year)
+        roman_year = YEAR_ROMAN.get(yr_val, coordinator.year)
+    except ValueError:
+        roman_year = coordinator.year
+
+    title_cell.value = f"Sri Aurobindo Institute of Technology, Indore, {coordinator.department} dept. Attendance Record {roman_year} YEAR {coordinator.section}"
+    title_cell.font = Font(name="Calibri", size=13, bold=True, color="FFFFFF")
+    title_cell.fill = PatternFill(start_color="5C59E8", end_color="5C59E8", fill_type="solid")
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 40
+
+    for c in range(1, max_col + 1):
+        ws.cell(row=1, column=c).border = thin_border
+
+    # 2. Date Row (Row 2)
+    ws['B2'] = "Date------>"
+    ws['B2'].font = Font(name="Calibri", size=10, italic=True)
+    ws['B2'].alignment = Alignment(horizontal="right", vertical="center")
+    
+    current_date = None
+    start_col = 4
+    
+    for idx, (date, subject) in enumerate(col_pairs):
+        col_idx = 4 + idx
+        cell = ws.cell(row=2, column=col_idx)
+        date_str = date.strftime('%d/%m/%y %a') if date else "-"
+        cell.value = date_str
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = Font(name="Calibri", size=10, bold=True)
+        
+        if current_date is None:
+            current_date = date
+            start_col = col_idx
+        elif date != current_date:
+            if col_idx - 1 > start_col:
+                ws.merge_cells(start_row=2, start_column=start_col, end_row=2, end_column=col_idx - 1)
+            current_date = date
+            start_col = col_idx
+
+    if len(col_pairs) > 0 and (4 + len(col_pairs) - 1) > start_col:
+        ws.merge_cells(start_row=2, start_column=start_col, end_row=2, end_column=4 + len(col_pairs) - 1)
+
+    # 3. Lecture Row (Row 3)
+    ws['B3'] = "Lecture No ------>"
+    ws['B3'].font = Font(name="Calibri", size=10, italic=True)
+    ws['B3'].alignment = Alignment(horizontal="right", vertical="center")
+    
+    lecture_counters = {}
+    for idx, (date, subject) in enumerate(col_pairs):
+        col_idx = 4 + idx
+        lecture_counters[date] = lecture_counters.get(date, 0) + 1
+        cell = ws.cell(row=3, column=col_idx)
+        cell.value = f"L{lecture_counters[date]}"
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = Font(name="Calibri", size=10)
+
+    # 4. Subject Row (Row 4)
+    ws['B4'] = "SUBJECT"
+    ws['B4'].font = Font(name="Calibri", size=10, bold=True)
+    ws['B4'].alignment = Alignment(horizontal="left", vertical="center")
+    ws['C4'] = "------->"
+    ws['C4'].alignment = Alignment(horizontal="center", vertical="center")
+    
+    for idx, (date, subject) in enumerate(col_pairs):
+        col_idx = 4 + idx
+        cell = ws.cell(row=4, column=col_idx)
+        cell.value = subject
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.font = Font(name="Calibri", size=10, bold=True)
+
+    # 5. Faculty Row (Row 5)
+    ws['B5'] = "FACULTY NAME"
+    ws['B5'].font = Font(name="Calibri", size=10, bold=True)
+    ws['B5'].alignment = Alignment(horizontal="left", vertical="center")
+    ws['C5'] = "------->"
+    ws['C5'].alignment = Alignment(horizontal="center", vertical="center")
+    
+    for idx, (date, subject) in enumerate(col_pairs):
+        col_idx = 4 + idx
+        cell = ws.cell(row=5, column=col_idx)
+        
+        initials = "-"
+        ts = TeacherSubject.objects.filter(
+            subject__iexact=subject,
+            year=coordinator.year,
+            section=coordinator.section
+        ).first()
+        if not ts:
+            ts = TeacherSubject.objects.filter(subject__iexact=subject).first()
+            
+        if ts and ts.teacher:
+            first = ts.teacher.first_name
+            last = ts.teacher.last_name
+            if first and last:
+                initials = f"{first[0].upper()}{last[0].upper()}"
+            elif first:
+                initials = first[:2].upper()
+            else:
+                initials = ts.teacher.username[:3].upper()
+                
+        cell.value = initials
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = Font(name="Calibri", size=10)
+
+    # 6. Headers (Row 6)
+    ws['A6'] = "S.No."
+    ws['B6'] = "Enrollment_No"
+    ws['C6'] = "Student_Name"
+    
+    header_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    for cell_ref in ['A6', 'B6', 'C6']:
+        cell = ws[cell_ref]
+        cell.font = Font(name="Calibri", size=11, bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.fill = header_fill
+        
+    for idx, (date, subject) in enumerate(col_pairs):
+        col_idx = 4 + idx
+        cell = ws.cell(row=6, column=col_idx)
+        cell.value = idx + 1
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = Font(name="Calibri", size=10, bold=True)
+        cell.fill = header_fill
+
+    for r in range(2, 7):
+        for c in range(1, max_col + 1):
+            ws.cell(row=r, column=c).border = thin_border
+
+    # 7. Student rows (Row 7+)
+    fill_present = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+    font_present = Font(name="Calibri", size=10, bold=True, color="2E7D32")
+    fill_absent = PatternFill(start_color="FFEBEE", end_color="FFEBEE", fill_type="solid")
+    font_absent = Font(name="Calibri", size=10, bold=True, color="C62828")
+    font_none = Font(name="Calibri", size=10, color="757575")
+
+    for s_idx, s in enumerate(students):
+        row_idx = 7 + s_idx
+        
+        c_sno = ws.cell(row=row_idx, column=1, value=s_idx + 1)
+        c_sno.alignment = Alignment(horizontal="center", vertical="center")
+        
+        c_roll = ws.cell(row=row_idx, column=2, value=s.roll_number)
+        c_roll.alignment = Alignment(horizontal="center", vertical="center")
+        
+        c_name = ws.cell(row=row_idx, column=3, value=s.name)
+        c_name.alignment = Alignment(horizontal="left", vertical="center")
+        
+        for c in [c_sno, c_roll, c_name]:
+            c.font = Font(name="Calibri", size=10)
+            c.border = thin_border
+            
+        s_records = { (r.date, r.subject): r.status for r in records.filter(student=s) }
+        
+        for col_i, (date, subject) in enumerate(col_pairs):
+            col_idx = 4 + col_i
+            status = s_records.get((date, subject), '-')
+            
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            
+            if status == 'Present':
+                cell.value = 1
+                cell.fill = fill_present
+                cell.font = font_present
+            elif status == 'Absent':
+                cell.value = 0
+                cell.fill = fill_absent
+                cell.font = font_absent
+            else:
+                cell.value = '-'
+                cell.font = font_none
+
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            if cell.row == 1:
+                continue
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+        
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 18
+    ws.column_dimensions['C'].width = 25
+    
+    ws.row_dimensions[2].height = 20
+    ws.row_dimensions[3].height = 20
+    ws.row_dimensions[4].height = 25
+    ws.row_dimensions[5].height = 20
+    ws.row_dimensions[6].height = 20
+    
+    for r in range(7, 7 + len(students)):
+        ws.row_dimensions[r].height = 20
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    filename = f"attendance_{coordinator.department}_{coordinator.year}_{coordinator.section}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response

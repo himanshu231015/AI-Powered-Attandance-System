@@ -200,31 +200,152 @@
             margin-right: 8px;
         }
 
-        .nav-link {
+        /* Unified Premium Navbar Styles */
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-nav .nav-link {
             color: var(--nav-link-color) !important;
             font-weight: 500;
-            padding: 0.5rem 0.9rem !important;
-            border-radius: 8px;
-            transition: all 0.2s ease;
+            padding: 0.55rem 0.95rem !important;
+            border-radius: 12px;
+            white-space: nowrap;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex !important;
+            align-items: center;
+            gap: 8px;
         }
 
-        .nav-link:hover {
+        .navbar-nav .nav-link:hover {
             color: var(--nav-link-hover) !important;
-            background: rgba(79, 70, 229, 0.06);
+            background: rgba(79, 70, 229, 0.08);
+            transform: translateY(-1px);
         }
 
-        body.dark-mode .nav-link:hover {
-            background: rgba(129, 140, 248, 0.08);
+        body.dark-mode .navbar-nav .nav-link:hover {
+            color: #818cf8 !important;
+            background: rgba(129, 140, 248, 0.1);
+        }
+
+        .navbar-nav .nav-link.active {
+            color: var(--primary-color) !important;
+            background: rgba(79, 70, 229, 0.08) !important;
+            font-weight: 600;
+        }
+
+        body.dark-mode .navbar-nav .nav-link.active {
+            color: #818cf8 !important;
+            background: rgba(129, 140, 248, 0.12) !important;
+        }
+
+        .navbar-nav .nav-link i {
+            font-size: 1.05rem;
+            opacity: 0.85;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .navbar-nav .nav-link:hover i {
+            opacity: 1;
+            transform: scale(1.1);
         }
 
         .nav-item-profile {
-            background: rgba(79, 70, 229, 0.08);
-            border-radius: 20px;
-            padding: 1px 4px;
+            background: rgba(79, 70, 229, 0.08) !important;
+            border-radius: 20px !important;
+            padding: 2px 6px !important;
+            border: 1px solid rgba(79, 70, 229, 0.15);
+            transition: all 0.25s ease;
         }
 
         body.dark-mode .nav-item-profile {
-            background: rgba(129, 140, 248, 0.12);
+            background: rgba(129, 140, 248, 0.12) !important;
+            border-color: rgba(129, 140, 248, 0.2);
+        }
+
+        .nav-item-profile:hover {
+            border-color: var(--primary-color);
+            background: rgba(79, 70, 229, 0.12) !important;
+        }
+
+        body.dark-mode .nav-item-profile:hover {
+            border-color: #818cf8;
+            background: rgba(129, 140, 248, 0.18) !important;
+        }
+
+        #darkModeToggle {
+            background: transparent;
+            border: none;
+            padding: 0.55rem !important;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: var(--text-muted) !important;
+            transition: all 0.2s ease;
+        }
+
+        #darkModeToggle:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text-main) !important;
+            transform: rotate(15deg);
+        }
+
+        body.dark-mode #darkModeToggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main) !important;
+        }
+
+        /* Mobile Responsive Adjustments */
+        @media (max-width: 991.98px) {
+            .navbar-nav {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+                padding-top: 1rem;
+            }
+            .navbar-nav .nav-link {
+                display: flex !important;
+                align-items: center;
+                gap: 12px;
+                padding: 0.75rem 1rem !important;
+                background: rgba(0, 0, 0, 0.02);
+                border-radius: 10px;
+                width: 100%;
+            }
+            body.dark-mode .navbar-nav .nav-link {
+                background: rgba(255, 255, 255, 0.02);
+            }
+            .nav-item-profile {
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+            .nav-item-profile .nav-link {
+                background: rgba(79, 70, 229, 0.08) !important;
+            }
+            body.dark-mode .nav-item-profile .nav-link {
+                background: rgba(129, 140, 248, 0.12) !important;
+            }
+            #darkModeToggle {
+                width: 100% !important;
+                border-radius: 10px !important;
+                justify-content: flex-start !important;
+                padding: 0.75rem 1rem !important;
+                background: rgba(0, 0, 0, 0.02) !important;
+                gap: 12px;
+            }
+            body.dark-mode #darkModeToggle {
+                background: rgba(255, 255, 255, 0.02) !important;
+            }
+            #darkModeToggle::after {
+                content: "Toggle Theme";
+                font-size: 0.92rem;
+                font-weight: 500;
+            }
         }
 
         /* Card Styles */
@@ -469,17 +590,54 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                     {% if user.is_superuser %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'admin_dashboard' %}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}">Students</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'admin_dashboard' %}"><i class="fas fa-chart-line me-1"></i>Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}"><i class="fas fa-users-cog me-1"></i>Students</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'admin_store_dashboard' %}"><i class="fas fa-store me-1"></i>Store</a></li>
                     {% elif user.is_staff %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'teacher_dashboard' %}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Profile</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'manage_students' %}">Student Attendance</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'my_store_requests' %}"><i class="fas fa-boxes me-1"></i>Store Requests</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'teacher_materials' %}"><i class="fas fa-clipboard-list me-1"></i>Assignment</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'upload_attendance' %}">Take Attendance</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'attendance_list' %}">History</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'teacher_dashboard' %}">
+                            <i class="fas fa-th-large me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    {% if user.coordinated_classes.exists %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'coordinator_dashboard' %}">
+                            <i class="fas fa-users-cog me-1"></i> Coordinated Class
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="attendanceDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-clipboard-check me-1"></i> Attendance
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="attendanceDropdown">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'upload_attendance' %}">
+                                    <i class="fas fa-camera me-2 text-primary"></i> Take Attendance
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'attendance_list' %}">
+                                    <i class="fas fa-history me-2 text-info"></i> History
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'manage_students' %}">
+                                    <i class="fas fa-users me-2 text-success"></i> Student Attendance
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'my_store_requests' %}">
+                            <i class="fas fa-boxes me-1"></i> Store Requests
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'teacher_materials' %}">
+                            <i class="fas fa-clipboard-list me-1"></i> Assignment
+                        </a>
+                    </li>
                     {% else %}
                     {# Store staff / store head (non-teacher, non-student) #}
                     {% if user.store_profile.role == 'head' %}
@@ -487,8 +645,50 @@
                     {% elif user.store_profile %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'store_staff_tasks' %}"><i class="fas fa-tasks me-1"></i>My Tasks</a></li>
                     {% else %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'student_dashboard' %}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'student_materials' %}"><i class="fas fa-book me-1"></i>Assignments & Notes</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'student_dashboard' %}?section=home-section" data-section="home-section">
+                            <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="attendanceDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-calendar-check me-1"></i> Attendance
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="attendanceDropdown">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'student_dashboard' %}?section=overall" data-section="overall">
+                                    <i class="fas fa-chart-pie me-2 text-primary"></i> Overall Attendance
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'student_dashboard' %}?section=subject" data-section="subject">
+                                    <i class="fas fa-tasks me-2 text-success"></i> Subject Attendance
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'student_dashboard' %}?section=history" data-section="history">
+                                    <i class="fas fa-history me-2 text-warning"></i> Attendance History
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'student_materials' %}">
+                            <i class="fas fa-book me-1"></i> Assignments & Notes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'student_applications' %}">
+                            <i class="fas fa-file-alt me-1"></i> My Applications
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'student_dashboard' %}?section=notifications" data-section="notifications">
+                            <i class="fas fa-bell me-1"></i> Notifications
+                            <span id="student-nav-notification-badge" class="badge bg-danger rounded-pill ms-1" style="display: none;">0</span>
+                        </a>
+                    </li>
                     {% endif %}
                     {% endif %}
 
@@ -523,15 +723,28 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                             <li>
+                                <a class="dropdown-item" href="{% url 'profile' %}">
+                                    <i class="fas fa-user me-2 text-primary"></i> Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'change_password' %}">
+                                    <i class="fas fa-key me-2 text-warning"></i> Change Password
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
                                 <a class="dropdown-item" href="{% url 'logout' %}">
-                                    <i class="fas fa-sign-out-alt me-2 text-danger"></i>Logout
+                                    <i class="fas fa-sign-out-alt me-2 text-danger"></i> Logout
                                 </a>
                             </li>
                         </ul>
                     </li>
                     {% else %}
+                    {% if request.resolver_match.url_name != 'login' %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><i
                                 class="fas fa-sign-in-alt me-1"></i> Login</a></li>
+                    {% endif %}
                     {% endif %}
                     <li class="nav-item">
                         <button class="btn nav-link" id="darkModeToggle" title="Toggle Dark Mode">
@@ -664,6 +877,80 @@
             // Initial fetch and poll every 15 seconds
             fetchStoreNotifications();
             setInterval(fetchStoreNotifications, 15000);
+        });
+    </script>
+    {% endif %}
+    
+    {% if not user.is_staff and not user.store_profile and not user.is_superuser %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const studentBadge = document.getElementById('student-nav-notification-badge');
+            
+            function fetchStudentNotifications() {
+                fetch("{% url 'get_notifications' %}")
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            if (data.count > 0) {
+                                if (studentBadge) {
+                                    studentBadge.textContent = data.count;
+                                    studentBadge.style.display = 'inline-block';
+                                }
+                                
+                                // Update dashboard notification list if it exists
+                                const notifList = document.getElementById('notification-list');
+                                if (notifList) {
+                                    let html = '';
+                                    data.notifications.forEach(n => {
+                                        let icon = 'fa-info-circle text-primary';
+                                        if (n.type === 'alert') icon = 'fa-exclamation-triangle text-warning';
+                                        else if (n.type === 'attendance') icon = 'fa-user-check text-success';
+                                        
+                                        html += `
+                                            <li class="list-group-item d-flex justify-content-between align-items-center py-3 border-bottom" style="background: transparent; border-color: var(--border-color);">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas ${icon} me-3 fs-5"></i>
+                                                    <div>
+                                                        <p class="mb-0 fw-bold" style="font-size: 0.9rem;">${n.message}</p>
+                                                        <span class="text-muted small">${n.created_at}</span>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-sm btn-link text-decoration-none text-muted" onclick="markStudentRead(${n.id}, this)">
+                                                    <i class="fas fa-check"></i> Mark read
+                                                </button>
+                                            </li>
+                                        `;
+                                    });
+                                    notifList.innerHTML = html;
+                                }
+                            } else {
+                                if (studentBadge) {
+                                    studentBadge.style.display = 'none';
+                                }
+                                const notifList = document.getElementById('notification-list');
+                                if (notifList) {
+                                    notifList.innerHTML = '<li class="list-group-item text-center text-muted py-5 border-0">No new notifications.</li>';
+                                }
+                            }
+                        }
+                    })
+                    .catch(err => console.error("Error fetching notifications:", err));
+            }
+
+            window.markStudentRead = function(id, btn) {
+                fetch(`/core/notifications/read/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    fetchStudentNotifications();
+                })
+                .catch(err => console.error("Error marking read:", err));
+            };
+
+            fetchStudentNotifications();
+            setInterval(fetchStudentNotifications, 15000);
         });
     </script>
     {% endif %}

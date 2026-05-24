@@ -228,45 +228,57 @@ def identify_faces(image_path=None, image_content=None):
     else:
         image = face_recognition.load_image_file(image_path)
     
-    print("Detecting face locations with HOG...")
-    # 1. HOG Detection (face_recognition defaults)
-    hog_face_locations = face_recognition.face_locations(image)
+    # 1. Resize image for faster face detection (2x downscaling)
+    scale_factor = 2
+    height, width = image.shape[:2]
+    small_image = cv2.resize(image, (width // scale_factor, height // scale_factor))
+    
+    print("Detecting face locations with HOG on downscaled image...")
+    # Run HOG on downscaled image
+    hog_face_locations_small = face_recognition.face_locations(small_image)
+    # Scale face locations back up to original image resolution
+    hog_face_locations = [(t * scale_factor, r * scale_factor, b * scale_factor, l * scale_factor) for (t, r, b, l) in hog_face_locations_small]
     print(f"HOG found {len(hog_face_locations)} faces")
 
-    # 2. Haar Cascade Detection
+    # 2. Haar Cascade Detection on downscaled image (frontal + profile face support)
     print("Detecting face locations with Haar Cascade...")
     try:
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        else:
-            gray = image
+        profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_profileface.xml')
         
-        # Increased minNeighbors to 9 to reduce false positive detections (ghost boxes in the background)
-        haar_faces_rects = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=9, minSize=(60, 60))
+        gray_small = cv2.cvtColor(small_image, cv2.COLOR_RGB2GRAY)
+        
+        # Frontal face (lowered minNeighbors to 5 to be more sensitive to tilted/side faces)
+        haar_faces_rects = face_cascade.detectMultiScale(gray_small, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
         
         haar_face_locations = []
         for (x, y, w, h) in haar_faces_rects:
-            # Convert (x, y, w, h) to (top, right, bottom, left)
-            # top = y, right = x+w, bottom = y+h, left = x
-            haar_face_locations.append((y, x + w, y + h, x))
+            t = y * scale_factor
+            r = (x + w) * scale_factor
+            b = (y + h) * scale_factor
+            l = x * scale_factor
+            haar_face_locations.append((t, r, b, l))
             
-        print(f"Haar found {len(haar_face_locations)} faces")
+        # Profile face (side view / tilted backup)
+        haar_profile_rects = profile_cascade.detectMultiScale(gray_small, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        for (x, y, w, h) in haar_profile_rects:
+            t = y * scale_factor
+            r = (x + w) * scale_factor
+            b = (y + h) * scale_factor
+            l = x * scale_factor
+            haar_face_locations.append((t, r, b, l))
+            
+        print(f"Haar found {len(haar_face_locations)} faces (frontal + profile)")
     except Exception as e:
         print(f"Haar Cascade error: {e}")
         haar_face_locations = []
 
-    # 3. Merge Detections (Avoid duplicates)
+    # 3. Merge Detections (Avoid duplicates using IOU)
     final_face_locations = list(hog_face_locations)
     
     def calculate_iou(boxA, boxB):
-        # determine the (x, y)-coordinates of the intersection rectangle
         # box: (top, right, bottom, left)
-        # Convert to (x1, y1, x2, y2) where x1=left, y1=top, x2=right, y2=bottom
-        
-        # boxA
         tA, rA, bA, lA = boxA
-        # boxB
         tB, rB, bB, lB = boxB
         
         xA = max(lA, lB)
@@ -274,14 +286,11 @@ def identify_faces(image_path=None, image_content=None):
         xB = min(rA, rB)
         yB = min(bA, bB)
         
-        # compute the area of intersection rectangle
         interArea = max(0, xB - xA) * max(0, yB - yA)
         
-        # compute the area of both the prediction and ground-truth rectangles
         boxAArea = (rA - lA) * (bA - tA)
         boxBArea = (rB - lB) * (bB - tB)
         
-        # compute the intersection over union
         iou = interArea / float(boxAArea + boxBArea - interArea)
         return iou
 
@@ -302,23 +311,18 @@ def identify_faces(image_path=None, image_content=None):
         print("DEBUG: No faces found.")
         return []
         
+    # Get high-quality encodings from original full-resolution image using scaled locations
     faces_encodings = face_recognition.face_encodings(image, known_face_locations=final_face_locations)
     print(f"DEBUG: Encodings generated: {len(faces_encodings)}")
     
-    # If using Haar, sometimes faces are not clear enough for encodings to return valid data corresponding to locs?
-    # face_encodings returns a list of len(known_face_locations). If it can't encode, does it skip?
-    # Documentation says: "If known_face_locations is None, ... If known_face_locations is not None, returns a list of encodings for each face location."
-    # So lists should match length.
-    
-    print("Finding closest neighbors...")
-    # Handle case where we have locations but maybe encoding failed for some reason (rare but possible if image is tiny)
     if len(faces_encodings) == 0:
          return []
 
+    print("Finding closest neighbors...")
     closest_distances = knn_clf.kneighbors(faces_encodings, n_neighbors=1)
     
-    # Tightened to 0.48 to avoid false positives (0.60 was too loose for small datasets)
-    threshold = 0.48
+    # Balanced threshold: 0.53 (more lenient than 0.48 to recognize tilted/different lighting faces, but tight enough for accuracy)
+    threshold = 0.53
     are_matches = [closest_distances[0][i][0] <= threshold for i in range(len(faces_encodings))]
     
     predictions = []
@@ -330,7 +334,6 @@ def identify_faces(image_path=None, image_content=None):
             roll_number = pred
             try:
                 student = Student.objects.get(roll_number=roll_number)
-                # Show score in UI for user feedback
                 name = f"{student.name} ({distance_val})"
             except Student.DoesNotExist:
                 name = "Unknown"

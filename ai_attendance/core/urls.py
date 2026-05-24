@@ -70,4 +70,10 @@ urlpatterns = [
     path('store_notifications/get/', views.get_store_notifications, name='get_store_notifications'),
     path('store_notifications/read/<int:notif_id>/', views.mark_store_notification_read, name='mark_store_notification_read'),
     path('store_notifications/read_all/', views.mark_all_store_notifications_read, name='mark_all_store_notifications_read'),
+    
+    # Class Coordinator URLs
+    path('student/applications/', views.student_applications, name='student_applications'),
+    path('coordinator/dashboard/', views.coordinator_dashboard, name='coordinator_dashboard'),
+    path('coordinator/application/resolve/<int:app_id>/', views.coordinator_resolve_application, name='coordinator_resolve_application'),
+    path('coordinator/export/excel/<int:coord_id>/', views.export_coordinator_attendance_excel, name='export_coordinator_attendance_excel'),
 ]

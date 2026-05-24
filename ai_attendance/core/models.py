@@ -15,6 +15,7 @@ class Student(models.Model):
     section = models.CharField(max_length=10, null=True, blank=True)
     plain_password = models.CharField(max_length=128, null=True, blank=True)  # For display purposes only
     is_registered = models.BooleanField(default=False)
+    profile_pic = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -432,3 +433,38 @@ class LateSubmissionRequest(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.assignment.title} ({self.status})"
+
+
+class ClassCoordinator(models.Model):
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'is_staff': True, 'is_superuser': False}, related_name='coordinated_classes')
+    department = models.CharField(max_length=10, choices=TeacherProfile.DEPARTMENT_CHOICES, default='CSE')
+    year = models.CharField(max_length=10)
+    section = models.CharField(max_length=10)
+
+    class Meta:
+        unique_together = ('department', 'year', 'section')
+
+    def __str__(self):
+        return f"{self.teacher.username} - Coordinator of {self.department} {self.year}-{self.section}"
+
+
+class StudentApplication(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='applications')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    attachment = models.FileField(upload_to='applications/', null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    remarks = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.title} [{self.status}]"

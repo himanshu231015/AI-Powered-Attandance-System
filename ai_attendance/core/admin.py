@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Student, TimeTable, AttendanceRecord, TeacherSubject, Teacher, TeacherProfile
+from .models import Student, TimeTable, AttendanceRecord, TeacherSubject, Teacher, TeacherProfile, ClassCoordinator, StudentApplication
 
 from django import forms
 from django.conf import settings
@@ -136,6 +136,18 @@ admin.site.register(TimeTable, TimeTableAdmin)
 admin.site.register(AttendanceRecord, AttendanceRecordAdmin)
 admin.site.register(TeacherSubject, TeacherSubjectAdmin)
 admin.site.register(Teacher, TeacherAdmin)
+
+@admin.register(ClassCoordinator)
+class ClassCoordinatorAdmin(admin.ModelAdmin):
+    list_display = ('teacher', 'department', 'year', 'section')
+    list_filter = ('department', 'year', 'section')
+    search_fields = ('teacher__username', 'teacher__first_name', 'teacher__last_name')
+
+@admin.register(StudentApplication)
+class StudentApplicationAdmin(admin.ModelAdmin):
+    list_display = ('student', 'title', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('student__name', 'student__roll_number', 'title')
 
 @admin.register(TeacherProfile)
 class TeacherProfileAdmin(admin.ModelAdmin):

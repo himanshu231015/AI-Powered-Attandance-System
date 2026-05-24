@@ -1,232 +1,437 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-user-circle me-2"></i>My Profile</h4>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            <!-- Profile Hero Card -->
+            <div class="card premium-card mb-4">
+                <div class="profile-banner"></div>
+                <div class="card-body text-center pt-0 px-4 pb-4 position-relative">
+                    <div class="profile-avatar-container">
+                        <div class="position-relative d-inline-block">
+                            {% if is_student and student.profile_pic %}
+                                <img id="avatarImage" src="{{ student.profile_pic.url }}" alt="Profile Picture" class="profile-avatar shadow" style="object-fit: cover;">
+                            {% else %}
+                                <div id="avatarPlaceholder" class="profile-avatar shadow d-inline-flex align-items-center justify-content-center bg-primary-soft text-primary">
+                                    <i class="fas fa-user-graduate"></i>
+                                </div>
+                            {% endif %}
+                            <span class="status-indicator-dot pulsing-green" title="Active Account"></span>
+                            
+                            <div class="mt-3" id="photoUploadContainer" style="display: none;">
+                                <label for="profile_pic" class="btn btn-sm btn-outline-primary rounded-pill px-3 bg-white text-primary" style="font-size: 0.8rem; font-weight: 600; cursor: pointer; border-color: rgba(79, 70, 229, 0.2);">
+                                    <i class="fas fa-camera me-1"></i> Change Photo
+                                </label>
+                                <input type="file" id="profile_pic" name="profile_pic" accept="image/*" style="display: none;" onchange="previewImage(this)">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="fw-extrabold mb-1 mt-3" style="font-weight: 800; letter-spacing: -0.5px;">
+                        {% if is_student and student %}{{ student.name }}{% else %}{{ user.get_full_name|default:user.username }}{% endif %}
+                    </h3>
+                    <div class="badge bg-success-soft text-success px-3 py-1 rounded-pill fw-bold" style="font-size: 0.75rem;">
+                        <i class="fas fa-check-circle me-1"></i> Active {% if is_student %}Student{% else %}Teacher/Staff{% endif %} Profile
+                    </div>
+                </div>
             </div>
-            <div class="card-body p-4">
-                <form method="post">
-                    {% csrf_token %}
 
-                    <div class="row mb-3">
+            <!-- Personal Details Card -->
+            <div class="card premium-card mb-4">
+                <div class="card-header premium-card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important; border: none !important;">
+                    <h4 class="mb-0 fw-bold py-1"><i class="fas fa-user-edit me-2"></i>Personal Details</h4>
+                    <button type="button" id="toggleEditBtn" class="btn btn-light btn-sm rounded-pill px-3 fw-bold text-primary border-0" onclick="enableProfileEditing()">
+                        <i class="fas fa-edit me-1"></i> Edit Profile
+                    </button>
+                </div>
+                <div class="card-body p-4 text-center">
+                    <!-- Personal Information Grid -->
+                    <div class="row g-3 mb-3 text-start">
                         <div class="col-md-6">
-                            <label for="first_name" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="first_name" name="first_name"
-                                value="{{ user.first_name }}">
+                            <label for="first_name" class="form-label small fw-bold text-muted">First Name</label>
+                            <div class="input-group-custom">
+                                <input type="text" class="form-control rounded-3 editable-field" id="first_name" name="first_name" value="{{ user.first_name }}" readonly>
+                                <span class="input-icon"><i class="fas fa-user"></i></span>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <label for="last_name" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="last_name" name="last_name"
-                                value="{{ user.last_name }}">
+                            <label for="last_name" class="form-label small fw-bold text-muted">Last Name</label>
+                            <div class="input-group-custom">
+                                <input type="text" class="form-control rounded-3 editable-field" id="last_name" name="last_name" value="{{ user.last_name }}" readonly>
+                                <span class="input-icon"><i class="fas fa-user"></i></span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}"
-                            required>
+                    <div class="mb-3 text-start">
+                        <label for="email" class="form-label small fw-bold text-muted">Email Address</label>
+                        <div class="input-group-custom">
+                            <input type="email" class="form-control rounded-3 editable-field" id="email" name="email" value="{{ user.email }}" required readonly>
+                            <span class="input-icon"><i class="fas fa-envelope"></i></span>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" value="{{ user.username }}" disabled>
-                        <div class="form-text">Username cannot be changed.</div>
+                    {% if is_student and student %}
+                    <div class="row g-3 mb-3 text-start">
+                        <div class="col-md-6">
+                            <label for="phone_number" class="form-label small fw-bold text-muted">Phone Number</label>
+                            <div class="input-group-custom">
+                                <input type="text" class="form-control rounded-3 editable-field" id="phone_number" name="phone_number" value="{{ student.phone_number|default:'' }}" readonly>
+                                <span class="input-icon"><i class="fas fa-phone"></i></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="date_of_birth" class="form-label small fw-bold text-muted">Date of Birth</label>
+                            <div class="input-group-custom">
+                                <input type="date" class="form-control rounded-3 editable-field" id="date_of_birth" name="date_of_birth" value="{{ student.date_of_birth|date:'Y-m-d' }}" readonly>
+                                <span class="input-icon"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
 
-                    <hr>
+                    <div class="mb-3 text-start">
+                        <label for="address" class="form-label small fw-bold text-muted">Address</label>
+                        <div class="input-group-custom">
+                            <textarea class="form-control rounded-3 editable-field" id="address" name="address" rows="3" readonly>{{ student.address|default:'' }}</textarea>
+                            <span class="input-icon" style="top: 12px; transform: none;"><i class="fas fa-map-marker-alt"></i></span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">Username</label>
+                        <div class="input-group-custom">
+                            <input type="text" class="form-control rounded-3" value="{{ user.username }}" disabled style="background-color: rgba(0, 0, 0, 0.02); cursor: not-allowed; border: 1px solid transparent !important; padding-left: 0; font-weight: 600; color: var(--text-main) !important;">
+                        </div>
+                        <div class="form-text small text-muted">Username cannot be changed.</div>
+                    </div>
+
+                    <hr class="my-4" style="border-color: var(--border-color);">
 
                     <div class="d-flex justify-content-between align-items-center">
-                        <a href="{% url 'change_password' %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'change_password' %}" class="btn btn-outline-secondary rounded-pill px-4" style="font-weight: 600;">
                             <i class="fas fa-key me-2"></i>Change Password
                         </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Save Changes
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card shadow mt-4">
-            <div class="card-header bg-success text-white">
-                <h4 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Holiday Calendar</h4>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(-1)"><i
-                            class="fas fa-chevron-left"></i></button>
-                    <h5 id="calendar-month-year" class="mb-0 fw-bold"></h5>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="changeMonth(1)"><i
-                            class="fas fa-chevron-right"></i></button>
-                </div>
-
-                <div class="calendar-container">
-                    <div class="calendar-header">
-                        <div class="text-danger">Sun</div>
-                        <div>Mon</div>
-                        <div>Tue</div>
-                        <div>Wed</div>
-                        <div>Thu</div>
-                        <div>Fri</div>
-                        <div class="text-danger">Sat</div>
-                    </div>
-                    <div id="calendar-days" class="calendar-days">
-                        <!-- JS GENERATED -->
+                        <div id="formActions" style="display: none;">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4 me-2" style="font-weight: 600;" onclick="disableProfileEditing()">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4" style="font-weight: 600; background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%); border: none;">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <div class="mt-3 small text-muted">
-                    <span class="d-inline-block rounded p-1 bg-danger text-white me-2">Weekend</span>
-                    <span>Sat & Sun are Holidays</span>
+            </div>
+            
+            <!-- Academic Details Card (Student Only) -->
+            {% if is_student and student %}
+            <div class="card premium-card mb-4">
+                <div class="card-header premium-card-header text-white" style="background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important; border: none !important;">
+                    <h4 class="mb-0 fw-bold py-1"><i class="fas fa-graduation-cap me-2"></i>Academic Details</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="p-3 info-subcard text-start h-100">
+                                <span class="info-label"><i class="fas fa-id-card me-1 text-primary"></i> Roll Number</span>
+                                <span class="info-value mt-1">{{ student.roll_number }}</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 info-subcard text-start h-100">
+                                <span class="info-label"><i class="fas fa-university me-1 text-info"></i> Department / Branch</span>
+                                <span class="info-value mt-1">{{ student.department|default:"Not Assigned" }}</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 info-subcard text-start h-100">
+                                <span class="info-label"><i class="fas fa-calendar-alt me-1 text-warning"></i> Academic Year</span>
+                                <span class="info-value mt-1">Year {{ student.year|default:"Not Assigned" }}</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 info-subcard text-start h-100">
+                                <span class="info-label"><i class="fas fa-layer-group me-1 text-success"></i> Section</span>
+                                <span class="info-value mt-1">Section {{ student.section|default:"Not Assigned" }}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+            {% endif %}
+
         </div>
     </div>
+</form>
 
-    <style>
-        .calendar-container {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .calendar-header,
-        .calendar-days {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            text-align: center;
-        }
-
-        .calendar-header div {
-            background-color: #f8f9fa;
-            padding: 10px;
-            font-weight: bold;
-            border-bottom: 1px solid #ddd;
-        }
-
-        /* Dark mode support for header */
-        body.dark-mode .calendar-header div {
-            background-color: #2d2d2d;
-            border-bottom-color: #444;
-            color: #e0e0e0;
-        }
-
-        .calendar-days div {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            border-right: 1px solid #eee;
-            min-height: 50px;
-            /* Consistent height */
-        }
-
-        body.dark-mode .calendar-days div {
-            border-color: #444;
-            color: #e0e0e0;
-        }
-
-        .calendar-days div:hover:not(.empty) {
-            background-color: #f0f0f0;
-            cursor: pointer;
-        }
-
-        body.dark-mode .calendar-days div:hover:not(.empty) {
-            background-color: #3d3d3d;
-        }
-
-        .calendar-days .today {
-            background-color: #e8f5e9;
-            font-weight: bold;
-            border: 2px solid #28a745;
-        }
-
-        body.dark-mode .calendar-days .today {
-            background-color: #1b5e20;
-            border-color: #66bb6a;
-        }
-
-        .calendar-days .holiday {
-            background-color: #ffebee;
-            color: #c62828;
-        }
-
-        body.dark-mode .calendar-days .holiday {
-            background-color: #3e2723;
-            /* Darker red/brown */
-            color: #ef9a9a;
-        }
-
-        .calendar-days .empty {
-            background-color: #f9f9f9;
-            cursor: default;
-        }
-
-        body.dark-mode .calendar-days .empty {
-            background-color: #252525;
-        }
-    </style>
-
-    <script>
-        let currentDate = new Date();
-
-        function renderCalendar() {
-            const monthYear = document.getElementById('calendar-month-year');
-            const calendarDays = document.getElementById('calendar-days');
-
-            calendarDays.innerHTML = '';
-
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth(); // 0-11
-
-            const monthNames = ["January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"
-            ];
-
-            monthYear.innerText = `${monthNames[month]} ${year}`;
-
-            // First day of the month (0=Sun, 1=Mon...)
-            const firstDay = new Date(year, month, 1).getDay();
-            // Days in month
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            // Add empty cells for previous month
-            for (let i = 0; i < firstDay; i++) {
-                const emptyDiv = document.createElement('div');
-                emptyDiv.className = 'empty';
-                calendarDays.appendChild(emptyDiv);
-            }
-
-            // Add days
-            const today = new Date();
-
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dayDiv = document.createElement('div');
-                dayDiv.innerText = i;
-
-                // Check day of week for this date to mark holiday
-                const currentDayOfWeek = new Date(year, month, i).getDay();
-
-                if (currentDayOfWeek === 0 || currentDayOfWeek === 6) {
-                    dayDiv.classList.add('holiday');
-                }
-
-                // Mark Today
-                if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                    dayDiv.classList.add('today');
-                }
-
-                calendarDays.appendChild(dayDiv);
-            }
-        }
-
-        function changeMonth(step) {
-            currentDate.setMonth(currentDate.getMonth() + step);
-            renderCalendar();
-        }
-
-        document.addEventListener('DOMContentLoaded', renderCalendar);
-    </script>
+    </div>
 </div>
+
+<style>
+    /* Profile Edit Mode Helper Styles */
+    .editable-field {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .editable-field[readonly] {
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        box-shadow: none !important;
+        padding-left: 0 !important;
+        font-weight: 600;
+        font-size: 1.05rem;
+        color: var(--text-main) !important;
+        cursor: default;
+    }
+    
+    textarea.editable-field[readonly] {
+        resize: none;
+        overflow: hidden;
+        min-height: auto;
+        height: auto;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    body.dark-mode .editable-field[readonly] {
+        color: #f4f4f5 !important;
+    }
+
+    .editable-field:not([readonly]) {
+        background-color: var(--input-bg) !important;
+        border: 1px solid var(--primary-color) !important;
+        padding-left: 40px !important;
+        box-shadow: 0 0 0 3px var(--input-focus) !important;
+        cursor: text;
+    }
+
+    /* Custom Input Group styling with sliding icon */
+    .input-group-custom {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+
+    .input-group-custom .input-icon {
+        position: absolute;
+        left: 14px;
+        color: var(--text-muted);
+        opacity: 0;
+        visibility: hidden;
+        font-size: 0.95rem;
+        transition: all 0.25s ease;
+        z-index: 10;
+        pointer-events: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .editable-field:not([readonly]) + .input-icon {
+        opacity: 0.8;
+        visibility: visible;
+        color: var(--primary-color);
+    }
+
+    /* Premium Design System Styling */
+    .premium-card {
+        border-radius: 20px !important;
+        border: none !important;
+        box-shadow: var(--shadow-sm) !important;
+        background-color: var(--bg-card);
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .premium-card-header {
+        padding: 20px 24px !important;
+    }
+
+    .bg-light-custom {
+        background-color: rgba(79, 70, 229, 0.02);
+    }
+    body.dark-mode .bg-light-custom {
+        background-color: rgba(255, 255, 255, 0.01);
+    }
+    .border-color-custom {
+        border-color: var(--border-color) !important;
+    }
+
+    /* Hero Profile layout */
+    .profile-banner {
+        height: 125px;
+        background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
+        opacity: 0.95;
+        position: relative;
+    }
+    
+    .profile-banner::after {
+        content: '';
+        position: absolute;
+        width: 140px;
+        height: 140px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        top: -40px;
+        right: -30px;
+    }
+    
+    .profile-avatar-container {
+        position: relative;
+        display: inline-block;
+        margin-top: -55px;
+    }
+    
+    .profile-avatar {
+        width: 105px;
+        height: 105px;
+        background: var(--bg-card);
+        border: 4px solid var(--bg-card);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #4F46E5;
+        font-size: 2.5rem;
+    }
+    
+    body.dark-mode .profile-avatar {
+        color: #818cf8;
+        background: #1e1e2d;
+        border-color: #1e1e2d;
+    }
+    
+    .status-indicator-dot {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2.5px solid var(--bg-card);
+    }
+    
+    .pulsing-green {
+        background-color: #10b981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse 1.6s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+        }
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+        }
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+    
+    .bg-success-soft {
+        background-color: rgba(16, 185, 129, 0.08) !important;
+    }
+    
+    .bg-primary-soft {
+        background-color: rgba(79, 70, 229, 0.08) !important;
+    }
+    
+    .info-subcard {
+        background-color: rgba(79, 70, 229, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .info-subcard:hover {
+        transform: translateY(-2px);
+        background-color: rgba(79, 70, 229, 0.04);
+        border-color: rgba(79, 70, 229, 0.15);
+    }
+    
+    body.dark-mode .info-subcard {
+        background-color: rgba(255, 255, 255, 0.01);
+    }
+    body.dark-mode .info-subcard:hover {
+        background-color: rgba(255, 255, 255, 0.025);
+    }
+    
+    .info-label {
+        font-weight: 700;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .info-value {
+        font-weight: 800;
+        color: var(--text-main);
+        font-size: 1.05rem;
+    }
+
+</style>
+
+<script>
+    // Profile Edit Mode Functions
+    function enableProfileEditing() {
+        // Remove readonly from editable fields
+        const fields = document.querySelectorAll('.editable-field');
+        fields.forEach(field => {
+            field.removeAttribute('readonly');
+            field.style.cursor = 'text';
+        });
+
+        // Show photo upload button
+        document.getElementById('photoUploadContainer').style.display = 'block';
+
+        // Show Form Action buttons (Save/Cancel)
+        document.getElementById('formActions').style.display = 'block';
+
+        // Hide Edit Profile button in header
+        document.getElementById('toggleEditBtn').style.display = 'none';
+    }
+
+    function disableProfileEditing() {
+        // Discard changes by reloading
+        window.location.reload();
+    }
+
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var imgContainer = input.closest('.profile-avatar-container');
+                var imgEl = imgContainer.querySelector('#avatarImage');
+                var placeholderEl = imgContainer.querySelector('#avatarPlaceholder');
+                
+                if (imgEl) {
+                    imgEl.src = e.target.result;
+                } else if (placeholderEl) {
+                    var newImg = document.createElement('img');
+                    newImg.id = "avatarImage";
+                    newImg.src = e.target.result;
+                    newImg.alt = "Profile Picture";
+                    newImg.className = "profile-avatar shadow";
+                    newImg.style.objectFit = "cover";
+                    placeholderEl.replaceWith(newImg);
+                }
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+</script>
 {% endblock %}
