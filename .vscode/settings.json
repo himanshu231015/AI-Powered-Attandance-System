@@ -1,0 +1,24 @@
+{
+    // Use Pylance for Python type checking (better Django support than Pyrefly)
+    "python.languageServer": "Pylance",
+
+    // Point to Anaconda Python where Django is installed
+    "python.defaultInterpreterPath": "C:/Users/himan/anaconda3/python.exe",
+
+    // Disable Pyrefly extension for this workspace
+    "pyrefly.enable": false,
+
+    // Pylance type checking - basic mode avoids false positives on Django models
+    "python.analysis.typeCheckingMode": "basic",
+
+    // Tell Pylance about Django stubs
+    "python.analysis.extraPaths": [
+        "C:/Users/himan/anaconda3/Lib/site-packages"
+    ],
+
+    // Suppress known Django ORM false positives in Pylance
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportAttributeAccessIssue": "none",
+        "reportGeneralTypeIssues": "none"
+    }
+}

@@ -29,6 +29,10 @@
                 class="btn btn-sm {% if selected_type == 'notes' %}btn-info text-white{% else %}btn-outline-info text-info{% endif %} rounded-pill px-3" style="font-size: 0.78rem;">
                 <i class="fas fa-file-alt me-1"></i>Notes
             </a>
+            
+            <button type="button" class="btn btn-sm btn-dark text-white rounded-pill px-3 ms-auto" style="font-size: 0.78rem;" data-bs-toggle="modal" data-bs-target="#askAiModal">
+                <i class="fas fa-robot me-1"></i> SUKU AI
+            </button>
         </form>
     </div>
 </div>
@@ -250,5 +254,358 @@
     .material-card:hover {
         transform: translateY(-5px);
     }
+    .modal-fullscreen .chat-box-area {
+        max-height: calc(100vh - 200px) !important;
+    }
+    .modal-fullscreen .context-area {
+        max-height: calc(100vh - 150px) !important;
+    }
 </style>
+
+<!-- Ask AI Modal -->
+<div class="modal fade" id="askAiModal" tabindex="-1" aria-labelledby="askAiModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 rounded-4 shadow-lg">
+      <div class="modal-header bg-dark text-white border-0 rounded-top-4">
+        <h5 class="modal-title fw-bold" id="askAiModalLabel"><i class="fas fa-robot me-2 text-warning"></i> SUKU</h5>
+        <div>
+            <button type="button" class="btn btn-sm btn-outline-light border-0 me-2" id="aiFullscreenBtn" title="Toggle Fullscreen">
+                <i class="fas fa-expand"></i>
+            </button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="modal-body p-4 bg-light">
+        <div class="row">
+            <!-- Context Selection -->
+            <div class="col-md-5 border-end d-flex flex-column context-area" id="aiSidebarCol" style="max-height: 450px;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-book-open me-2"></i>Select Context Materials</h6>
+                    <button type="button" class="btn btn-sm btn-outline-secondary border-0 p-1" id="closeSidebarBtn" title="Hide Context Materials">
+                        <i class="fas fa-columns"></i>
+                    </button>
+                </div>
+                
+                <ul class="nav nav-tabs nav-fill mb-3" id="contextTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active py-1" id="teacher-tab" data-bs-toggle="tab" data-bs-target="#teacher-tab-pane" type="button" role="tab" style="font-size: 0.8rem;">Teacher</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-1" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal-tab-pane" type="button" role="tab" style="font-size: 0.8rem;">My Notes</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content flex-grow-1 overflow-auto" id="myTabContent">
+                    <!-- Teacher Materials -->
+                    <div class="tab-pane fade show active" id="teacher-tab-pane" role="tabpanel" tabindex="0">
+                        <p class="small text-muted mb-2">Select teacher-uploaded materials.</p>
+                        <div class="list-group list-group-flush border rounded-3 bg-white">
+                            {% for m in materials %}
+                            <label class="list-group-item d-flex gap-2 align-items-center py-2" style="cursor: pointer; font-size: 0.85rem;">
+                                <input class="form-check-input flex-shrink-0 ai-material-checkbox" type="checkbox" value="{{ m.id }}" checked>
+                                <span class="text-truncate" title="{{ m.title }}">
+                                    <i class="{% if m.material_type == 'assignment' %}fas fa-tasks text-warning{% else %}fas fa-file-alt text-info{% endif %} me-1"></i>
+                                    {{ m.title }}
+                                </span>
+                            </label>
+                            {% empty %}
+                            <div class="p-3 text-center text-muted small">No materials available.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Personal Notes -->
+                    <div class="tab-pane fade" id="personal-tab-pane" role="tabpanel" tabindex="0">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <p class="small text-muted mb-0">Select your own notes & links.</p>
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="collapse" data-bs-target="#addNoteCollapse"><i class="fas fa-plus"></i> Add</button>
+                        </div>
+                        
+                        <div class="collapse mb-2" id="addNoteCollapse">
+                            <div class="card card-body p-2 bg-light shadow-sm">
+                                <form id="addStudentNoteForm" enctype="multipart/form-data">
+                                    <input type="text" id="noteTitle" class="form-control form-control-sm mb-2" placeholder="Note Title" required>
+                                    <select id="noteType" class="form-select form-select-sm mb-2" required>
+                                        <option value="youtube_link">YouTube Link</option>
+                                        <option value="web_link">Website Link</option>
+                                        <option value="pdf">PDF File</option>
+                                        <option value="doc">Word Doc</option>
+                                    </select>
+                                    <input type="url" id="noteUrl" class="form-control form-control-sm mb-2" placeholder="https://...">
+                                    <input type="file" id="noteFile" class="form-control form-control-sm mb-2 d-none" accept=".pdf,.doc,.docx">
+                                    <button type="submit" class="btn btn-sm btn-primary w-100" id="addNoteBtn">Save Note</button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group list-group-flush border rounded-3 bg-white" id="studentNotesList">
+                            {% for n in student_notes %}
+                            <label class="list-group-item d-flex gap-2 align-items-center py-2" style="cursor: pointer; font-size: 0.85rem;">
+                                <input class="form-check-input flex-shrink-0 ai-student-note-checkbox" type="checkbox" value="{{ n.id }}" checked>
+                                <span class="text-truncate" title="{{ n.title }}">
+                                    <i class="{% if n.note_type == 'youtube_link' %}fab fa-youtube text-danger{% elif n.note_type == 'web_link' %}fas fa-globe text-primary{% else %}fas fa-file text-info{% endif %} me-1"></i>
+                                    {{ n.title }}
+                                </span>
+                            </label>
+                            {% empty %}
+                            <div class="p-3 text-center text-muted small" id="noPersonalNotes">No personal notes added yet.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Interface -->
+            <div class="col-md-7 d-flex flex-column" id="aiChatCol">
+                <div class="d-none mb-2" id="openSidebarContainer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary border-0" id="openSidebarBtn" title="Show Context Materials">
+                        <i class="fas fa-columns me-1"></i> Context Materials
+                    </button>
+                </div>
+                <div id="aiChatBox" class="flex-grow-1 border bg-white rounded-3 p-3 mb-3 chat-box-area" style="min-height: 250px; max-height: 300px; overflow-y: auto;">
+                    <div class="d-flex mb-3">
+                        <div class="bg-light p-2 px-3 rounded-3 shadow-sm border" style="font-size: 0.85rem; max-width: 85%;">
+                            <i class="fas fa-robot text-primary me-1"></i> Hi! Select your materials on the left and ask me a question based on them.
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="aiChatForm" class="mt-auto">
+                    <div class="input-group">
+                        <input type="text" id="aiQuestionInput" class="form-control" placeholder="Ask a question about the selected notes..." required autocomplete="off">
+                        <button class="btn btn-dark" type="submit" id="aiSubmitBtn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Handle Sidebar Toggle (Close)
+document.getElementById('closeSidebarBtn').addEventListener('click', function() {
+    const sidebar = document.getElementById('aiSidebarCol');
+    const chatCol = document.getElementById('aiChatCol');
+    const openBtn = document.getElementById('openSidebarContainer');
+    
+    sidebar.classList.add('d-none');
+    chatCol.classList.remove('col-md-7');
+    chatCol.classList.add('col-md-12');
+    openBtn.classList.remove('d-none');
+});
+
+// Handle Sidebar Toggle (Open)
+document.getElementById('openSidebarBtn').addEventListener('click', function() {
+    const sidebar = document.getElementById('aiSidebarCol');
+    const chatCol = document.getElementById('aiChatCol');
+    const openBtn = document.getElementById('openSidebarContainer');
+    
+    sidebar.classList.remove('d-none');
+    chatCol.classList.remove('col-md-12');
+    chatCol.classList.add('col-md-7');
+    openBtn.classList.add('d-none');
+});
+
+// Handle Fullscreen Toggle
+document.getElementById('aiFullscreenBtn').addEventListener('click', function() {
+    const dialog = document.querySelector('#askAiModal .modal-dialog');
+    dialog.classList.toggle('modal-fullscreen');
+    dialog.classList.toggle('modal-lg');
+    
+    const icon = this.querySelector('i');
+    if (dialog.classList.contains('modal-fullscreen')) {
+        icon.classList.remove('fa-expand');
+        icon.classList.add('fa-compress');
+    } else {
+        icon.classList.remove('fa-compress');
+        icon.classList.add('fa-expand');
+    }
+});
+
+// Handle note type switching for form
+document.getElementById('noteType').addEventListener('change', function(e) {
+    const val = e.target.value;
+    const urlInput = document.getElementById('noteUrl');
+    const fileInput = document.getElementById('noteFile');
+    
+    if (val === 'youtube_link' || val === 'web_link') {
+        urlInput.classList.remove('d-none');
+        urlInput.required = true;
+        fileInput.classList.add('d-none');
+        fileInput.required = false;
+    } else {
+        urlInput.classList.add('d-none');
+        urlInput.required = false;
+        fileInput.classList.remove('d-none');
+        fileInput.required = true;
+    }
+});
+
+// Handle Add Note Form submission
+document.getElementById('addStudentNoteForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('addNoteBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    const formData = new FormData();
+    formData.append('title', document.getElementById('noteTitle').value);
+    formData.append('note_type', document.getElementById('noteType').value);
+    
+    if (document.getElementById('noteType').value.includes('link')) {
+        formData.append('url', document.getElementById('noteUrl').value);
+    } else {
+        formData.append('file', document.getElementById('noteFile').files[0]);
+    }
+    
+    fetch('{% url "add_student_note" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Note';
+        if (data.success) {
+            // Append to list
+            let icon = 'fas fa-file text-info';
+            if (data.note_type === 'youtube_link') icon = 'fab fa-youtube text-danger';
+            if (data.note_type === 'web_link') icon = 'fas fa-globe text-primary';
+            
+            const html = `
+            <label class="list-group-item d-flex gap-2 align-items-center py-2" style="cursor: pointer; font-size: 0.85rem;">
+                <input class="form-check-input flex-shrink-0 ai-student-note-checkbox" type="checkbox" value="${data.note_id}" checked>
+                <span class="text-truncate" title="${data.title}">
+                    <i class="${icon} me-1"></i> ${data.title}
+                </span>
+            </label>`;
+            
+            document.getElementById('studentNotesList').insertAdjacentHTML('beforeend', html);
+            
+            const emptyMsg = document.getElementById('noPersonalNotes');
+            if (emptyMsg) emptyMsg.remove();
+            
+            document.getElementById('addStudentNoteForm').reset();
+            document.getElementById('noteType').dispatchEvent(new Event('change'));
+            
+            // Hide collapse
+            const collapseEl = document.getElementById('addNoteCollapse');
+            const bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
+            if (bsCollapse) bsCollapse.hide();
+            
+        } else {
+            alert(data.error);
+        }
+    }).catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Note';
+        alert('Failed to save note');
+    });
+});
+
+document.getElementById('aiChatForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const questionInput = document.getElementById('aiQuestionInput');
+    const question = questionInput.value.trim();
+    if (!question) return;
+    
+    // Get selected materials
+    const materialsCheckboxes = document.querySelectorAll('.ai-material-checkbox:checked');
+    const materialIds = Array.from(materialsCheckboxes).map(cb => cb.value);
+    
+    const notesCheckboxes = document.querySelectorAll('.ai-student-note-checkbox:checked');
+    const studentNoteIds = Array.from(notesCheckboxes).map(cb => cb.value);
+    
+    if (materialIds.length === 0 && studentNoteIds.length === 0) {
+        alert("Please select at least one material/note to provide context to the AI.");
+        return;
+    }
+    
+    const chatBox = document.getElementById('aiChatBox');
+    
+    // Append User Question
+    const userMsgHtml = `
+    <div class="d-flex flex-row-reverse mb-3">
+        <div class="bg-primary text-white p-2 px-3 rounded-3 shadow-sm" style="font-size: 0.85rem; max-width: 85%;">
+            ${question.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+        </div>
+    </div>`;
+    chatBox.insertAdjacentHTML('beforeend', userMsgHtml);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    // Append Loading indicator
+    const loadingId = 'loading-' + Date.now();
+    const loadingHtml = `
+    <div id="${loadingId}" class="d-flex mb-3">
+        <div class="bg-light p-2 px-3 rounded-3 border shadow-sm" style="font-size: 0.85rem;">
+            <i class="fas fa-circle-notch fa-spin text-muted me-1"></i> Reading documents and thinking...
+        </div>
+    </div>`;
+    chatBox.insertAdjacentHTML('beforeend', loadingHtml);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    questionInput.value = '';
+    const submitBtn = document.getElementById('aiSubmitBtn');
+    submitBtn.disabled = true;
+    
+    fetch('{% url "ask_ai_notes" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            question: question,
+            material_ids: materialIds,
+            student_note_ids: studentNoteIds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById(loadingId).remove();
+        submitBtn.disabled = false;
+        
+        let aiResponse = "";
+        if (data.error) {
+            aiResponse = `<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i> ${data.error}</span>`;
+        } else {
+            // Very simple markdown to HTML (just handling bold and newlines for now)
+            let formattedAnswer = data.answer.replace(/\\n/g, '<br>')
+                                             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                             .replace(/\*(.*?)\*/g, '<em>$1</em>');
+            aiResponse = formattedAnswer;
+        }
+        
+        const aiMsgHtml = `
+        <div class="d-flex mb-3">
+            <div class="bg-light p-2 px-3 rounded-3 shadow-sm border" style="font-size: 0.85rem; max-width: 85%;">
+                <i class="fas fa-robot text-primary me-1"></i> ${aiResponse}
+            </div>
+        </div>`;
+        chatBox.insertAdjacentHTML('beforeend', aiMsgHtml);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+    })
+    .catch(err => {
+        document.getElementById(loadingId).remove();
+        submitBtn.disabled = false;
+        const errMsgHtml = `
+        <div class="d-flex mb-3">
+            <div class="bg-light p-2 px-3 rounded-3 shadow-sm border border-danger text-danger" style="font-size: 0.85rem; max-width: 85%;">
+                <i class="fas fa-exclamation-triangle me-1"></i> Failed to connect to AI server. Please try again later.
+            </div>
+        </div>`;
+        chatBox.insertAdjacentHTML('beforeend', errMsgHtml);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+});
+</script>
 {% endblock %}

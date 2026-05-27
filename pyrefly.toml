@@ -1,0 +1,4 @@
+# Pyrefly configuration for AI Attendance System (Django project)
+# Points Pyrefly to the Anaconda Python environment where Django is installed
+
+python_interpreter = "C:/Users/himan/anaconda3/python.exe"

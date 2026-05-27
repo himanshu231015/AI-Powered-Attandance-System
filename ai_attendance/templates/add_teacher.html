@@ -19,11 +19,11 @@
                                    placeholder="e.g. TEA010" required>
                         </div>
 
-                        <!-- Email -->
+                        <!-- Name -->
                         <div class="col-md-6">
-                            <label for="email" class="form-label fw-semibold">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email"
-                                   placeholder="teacher@college.ac.in" required>
+                            <label for="name" class="form-label fw-semibold">Full Name</label>
+                            <input type="text" class="form-control" id="name" name="name"
+                                   placeholder="e.g. John Doe" required>
                         </div>
 
                         <!-- Password -->
@@ -95,9 +95,12 @@
                         </div>
                     </div>
 
-                    <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-plus-circle me-2"></i>Add Teacher
+                    <div class="d-flex gap-3 justify-content-between flex-wrap mt-4">
+                        <button type="submit" name="save_and_add_another" value="true" class="btn btn-outline-primary btn-lg flex-grow-1" onclick="this.form.submittedBtn=this;">
+                            <i class="fas fa-plus me-2"></i>Save & Add Another
+                        </button>
+                        <button type="submit" name="save" value="true" class="btn btn-primary btn-lg flex-grow-1" onclick="this.form.submittedBtn=this;">
+                            <i class="fas fa-save me-2"></i>Save Teacher
                         </button>
                     </div>
                 </form>
@@ -108,6 +111,17 @@
                         const fieldsDiv = document.getElementById('coordinator-fields');
                         fieldsDiv.style.display = isChecked ? 'block' : 'none';
                     }
+
+                    document.querySelector('form').addEventListener('submit', function (e) {
+                        const btn = this.submittedBtn;
+                        if (btn && btn.name) {
+                            const hidden = document.createElement('input');
+                            hidden.type = 'hidden';
+                            hidden.name = btn.name;
+                            hidden.value = btn.value || 'true';
+                            this.appendChild(hidden);
+                        }
+                    });
                 </script>
             </div>
         </div>

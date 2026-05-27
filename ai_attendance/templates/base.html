@@ -112,6 +112,36 @@
             border: 1px solid var(--border-color) !important;
         }
 
+        body.dark-mode .text-secondary {
+            color: #a1a1aa !important;
+        }
+
+        body.dark-mode .bg-light-custom {
+            background-color: rgba(255, 255, 255, 0.04) !important;
+        }
+
+        body.dark-mode .list-group-item {
+            background-color: var(--bg-card) !important;
+            color: var(--text-main) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        body.dark-mode .border, body.dark-mode .border-top, body.dark-mode .border-bottom, body.dark-mode .border-end, body.dark-mode .border-start {
+            border-color: var(--border-color) !important;
+        }
+        
+        body.dark-mode .nav-tabs .nav-link {
+            color: var(--text-muted) !important;
+        }
+        body.dark-mode .nav-tabs .nav-link.active {
+            color: var(--text-main) !important;
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) var(--border-color) var(--bg-card) !important;
+        }
+        body.dark-mode .nav-tabs {
+            border-bottom-color: var(--border-color) !important;
+        }
+
         body.dark-mode .btn-light:hover {
             background-color: rgba(255, 255, 255, 0.15) !important;
         }
@@ -173,6 +203,186 @@
             color: #34d399 !important;
             border-color: #10b981 !important;
         }
+
+        /* === COMPREHENSIVE DARK MODE OVERRIDES === */
+
+        /* All text that is hard-coded to dark colours */
+        body.dark-mode p,
+        body.dark-mode span:not(.badge),
+        body.dark-mode label,
+        body.dark-mode small,
+        body.dark-mode .small,
+        body.dark-mode strong,
+        body.dark-mode b,
+        body.dark-mode li,
+        body.dark-mode div {
+            color: inherit;
+        }
+
+        /* Inline dark / black text anywhere on page */
+        body.dark-mode [style*="color: #0f172a"],
+        body.dark-mode [style*="color:#0f172a"],
+        body.dark-mode [style*="color: black"],
+        body.dark-mode [style*="color:black"],
+        body.dark-mode [style*="color: #1f2937"],
+        body.dark-mode [style*="color:#1f2937"],
+        body.dark-mode [style*="color: #111827"],
+        body.dark-mode [style*="color:#111827"],
+        body.dark-mode [style*="color: #374151"],
+        body.dark-mode [style*="color:#374151"] {
+            color: var(--text-main) !important;
+        }
+
+        /* Card, content boxes */
+        body.dark-mode .card,
+        body.dark-mode .card *:not(.badge):not(.btn):not([class*="text-warning"]):not([class*="text-danger"]):not([class*="text-success"]):not([class*="text-primary"]):not([class*="text-info"]) {
+            color: var(--text-main);
+        }
+
+        /* Alerts */
+        body.dark-mode .alert:not(.alert-warning):not([class*="bg-warning"]) {
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-main) !important;
+        }
+        body.dark-mode .alert-success {
+            background-color: rgba(16, 185, 129, 0.1) !important;
+            border-color: rgba(16, 185, 129, 0.3) !important;
+            color: #34d399 !important;
+        }
+        body.dark-mode .alert-danger {
+            background-color: rgba(244, 63, 94, 0.1) !important;
+            border-color: rgba(244, 63, 94, 0.3) !important;
+            color: #fb7185 !important;
+        }
+        body.dark-mode .alert-info {
+            background-color: rgba(2, 132, 199, 0.1) !important;
+            border-color: rgba(2, 132, 199, 0.3) !important;
+            color: #38bdf8 !important;
+        }
+
+        /* Form inputs / selects / textareas */
+        body.dark-mode .form-control,
+        body.dark-mode .form-select,
+        body.dark-mode textarea.form-control,
+        body.dark-mode input[type="text"],
+        body.dark-mode input[type="email"],
+        body.dark-mode input[type="number"],
+        body.dark-mode input[type="date"],
+        body.dark-mode input[type="password"],
+        body.dark-mode input[type="file"] {
+            background-color: var(--input-bg) !important;
+            color: var(--text-main) !important;
+            border-color: var(--border-color) !important;
+        }
+        body.dark-mode .form-check-input {
+            background-color: var(--input-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+        body.dark-mode .input-group-text {
+            background-color: var(--input-bg) !important;
+            color: var(--text-muted) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        /* Badges (keep coloured ones, fix secondary/light) */
+        body.dark-mode .badge.bg-secondary {
+            background-color: rgba(255,255,255,0.12) !important;
+            color: var(--text-main) !important;
+        }
+        body.dark-mode .badge.bg-light,
+        body.dark-mode .badge.bg-white {
+            background-color: rgba(255,255,255,0.08) !important;
+            color: var(--text-main) !important;
+        }
+
+        /* Modal body, footer */
+        body.dark-mode .modal-body,
+        body.dark-mode .modal-footer {
+            background-color: var(--bg-card) !important;
+            color: var(--text-main) !important;
+        }
+        body.dark-mode .modal-header {
+            border-color: var(--border-color) !important;
+        }
+
+        /* Dropdown */
+        body.dark-mode .dropdown-header {
+            color: var(--text-muted) !important;
+        }
+        body.dark-mode .dropdown-divider {
+            border-color: var(--border-color) !important;
+        }
+
+        /* Progress bars background track */
+        body.dark-mode .progress {
+            background-color: rgba(255,255,255,0.08) !important;
+        }
+
+        /* Holiday / info panel items */
+        body.dark-mode .holiday-item {
+            background-color: rgba(255,255,255,0.02) !important;
+            border-color: var(--border-color) !important;
+        }
+        body.dark-mode .holiday-item .text-main,
+        body.dark-mode .holiday-item .fw-bold,
+        body.dark-mode .holiday-item span {
+            color: var(--text-main) !important;
+        }
+
+        /* Calendar */
+        body.dark-mode .calendar-container,
+        body.dark-mode .calendar-header {
+            background-color: rgba(255,255,255,0.01) !important;
+        }
+        body.dark-mode .bg-soft-blue,
+        body.dark-mode .bg-light-custom {
+            background-color: rgba(255,255,255,0.02) !important;
+        }
+
+        /* Collapse boxes (assignment forms) */
+        body.dark-mode .collapse .rounded-4,
+        body.dark-mode .card-footer {
+            background-color: var(--bg-card) !important;
+            color: var(--text-main) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        /* Text utilities */
+        body.dark-mode .text-dark:not(.badge):not([class*="bg-warning"]):not([class*="alert-warning"]) {
+            color: var(--text-main) !important;
+        }
+        body.dark-mode .text-black {
+            color: var(--text-main) !important;
+        }
+        body.dark-mode .text-body {
+            color: var(--text-main) !important;
+        }
+
+        /* Notification bell dropdown items */
+        body.dark-mode #storeNotifMenu .dropdown-item,
+        body.dark-mode #storeNotifMenu span {
+            color: var(--text-main) !important;
+        }
+        body.dark-mode #storeNotifMenu {
+            background-color: var(--bg-card) !important;
+        }
+
+        /* AI chat box messages */
+        body.dark-mode .chat-box-area .bg-light,
+        body.dark-mode .chat-box-area .bg-white {
+            background-color: rgba(255,255,255,0.05) !important;
+            color: var(--text-main) !important;
+        }
+
+        /* Soft background utilities */
+        body.dark-mode .bg-success-soft {
+            background-color: rgba(16,185,129,0.15) !important;
+        }
+        body.dark-mode .text-success { color: #34d399 !important; }
+        body.dark-mode .text-warning { color: #fbbf24 !important; }
+        body.dark-mode .text-info    { color: #38bdf8 !important; }
+        body.dark-mode .text-danger  { color: #fb7185 !important; }
 
         /* Glassmorphism Navbar */
         .navbar {

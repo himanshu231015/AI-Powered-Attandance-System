@@ -468,3 +468,23 @@ class StudentApplication(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.title} [{self.status}]"
+
+class StudentNote(models.Model):
+    NOTE_TYPES = [
+        ('pdf', 'PDF File'),
+        ('doc', 'Word Document'),
+        ('youtube_link', 'YouTube Link'),
+        ('web_link', 'Website Link'),
+    ]
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='personal_notes')
+    title = models.CharField(max_length=200)
+    note_type = models.CharField(max_length=20, choices=NOTE_TYPES, default='pdf')
+    file = models.FileField(upload_to='student_notes/', null=True, blank=True)
+    url = models.URLField(max_length=500, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.title} ({self.get_note_type_display()})"

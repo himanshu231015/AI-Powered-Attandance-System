@@ -380,7 +380,8 @@ def detect_and_crop_face(image_path, save_dir, student_name_roll):
     face_image = image[top:bottom, left:right]
     
     # Generate filename
-    # Count existing files
+    # Count existing files (create directory if it doesn't exist yet)
+    os.makedirs(save_dir, exist_ok=True)
     existing_files = len(os.listdir(save_dir))
     filename = f"face_{existing_files + 1:02d}.jpg"
     save_path = os.path.join(save_dir, filename)

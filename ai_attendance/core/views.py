@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
-from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest, TeacherProfile, StoreStaff, StoreRequest, StoreRequestItem, StoreNotification, CourseMaterial, StudentSubmission, LateSubmissionRequest, ClassCoordinator, StudentApplication
+from .models import Student, AttendanceRecord, TimeTable, TeacherSubject, Notification, AssessmentRequest, AccessoryRequest, TeacherProfile, StoreStaff, StoreRequest, StoreRequestItem, StoreNotification, CourseMaterial, StudentSubmission, LateSubmissionRequest, ClassCoordinator, StudentApplication, StudentNote
 from .utils import train_model, identify_faces, detect_and_crop_face, get_existing_attendance_record
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -20,6 +20,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+import threading
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -698,10 +699,14 @@ def process_live_frame(request):
                 else:
                     status_msg = "Unknown"
                 
+                # Convert location tuple values from numpy.int32 to native Python int
+                loc = pred['location']
+                if loc is not None:
+                    loc = tuple(int(v) for v in loc)
                 results.append({
                     'name': pred['name'],
                     'roll_number': roll_number,
-                    'location': pred['location'],
+                    'location': loc,
                     'status': status_msg
                 })
             
@@ -719,7 +724,7 @@ def add_teacher(request):
     dept_choices = TeacherProfile.DEPARTMENT_CHOICES
     if request.method == 'POST':
         username    = request.POST.get('username')
-        email       = request.POST.get('email')
+        name        = request.POST.get('name', '')
         password    = request.POST.get('password')
         designation = request.POST.get('designation', 'asst_prof')
         department  = request.POST.get('department', 'CSE')
@@ -749,7 +754,8 @@ def add_teacher(request):
                 return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
 
         try:
-            user = User.objects.create_user(username=username, email=email, password=password)
+            user = User.objects.create_user(username=username, password=password)
+            user.first_name = name
             user.is_staff = True
             user.save()
             TeacherProfile.objects.create(
@@ -767,6 +773,8 @@ def add_teacher(request):
                 )
 
             messages.success(request, f"Teacher '{username}' added to {department} department!")
+            if 'save_and_add_another' in request.POST:
+                return redirect('add_teacher')
             return redirect('admin_dashboard')
         except Exception as e:
             messages.error(request, f"Error adding teacher: {e}")
@@ -777,24 +785,24 @@ def add_teacher(request):
 @user_passes_test(lambda u: u.is_superuser)
 def add_student(request):
     if request.method == 'POST':
-        name = request.POST.get('name')
-        roll_number = request.POST.get('roll_number')
-        department = request.POST.get('department')
-        year = request.POST.get('year')
-        section = request.POST.get('section')
+        name = request.POST.get('name', '').strip()
+        roll_number = request.POST.get('roll_number', '').strip()
+        department = request.POST.get('department', '').strip()
+        year = request.POST.get('year', '').strip()
+        section = request.POST.get('section', '').strip()
         images = request.FILES.getlist('images')
-        
+
         if Student.objects.filter(roll_number=roll_number).exists():
             messages.error(request, "Student with this Roll Number already exists.")
             return redirect('add_student')
-            
-        # Create User for student
+
+        # Create User and Student record immediately
         try:
             user = User.objects.create_user(username=roll_number, password=roll_number)
             student = Student.objects.create(
-                name=name, 
-                roll_number=roll_number, 
-                user=user, 
+                name=name,
+                roll_number=roll_number,
+                user=user,
                 plain_password=roll_number,
                 department=department,
                 year=year,
@@ -803,42 +811,88 @@ def add_student(request):
         except Exception as e:
             messages.error(request, f"Error creating user: {e}")
             return redirect('add_student')
-        
-        # Process images if uploaded
-        count = 0
+
         if images:
             folder_name = f"{roll_number}_{name}"
             safe_dept = "".join([c for c in department if c.isalnum() or c in (' ', '_', '-')]).strip()
             safe_year = "".join([c for c in str(year) if c.isalnum()]).strip()
             safe_section = "".join([c for c in str(section) if c.isalnum()]).strip()
-            
+
             save_dir = os.path.join(settings.DATASET_DIR, safe_dept, safe_year, safe_section, folder_name)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-                
-            fs = FileSystemStorage()
-            for img in images:
-                filename = fs.save(img.name, img)
-                temp_path = fs.path(filename)
-                
-                if detect_and_crop_face(temp_path, save_dir, folder_name):
-                    count += 1
-                
-                fs.delete(filename)
-                
-            if count >= 5:
-                student.is_registered = True
-                student.save()
-                train_model()
-                messages.success(request, f"Student added with {count} face images. Model retrained.")
-            else:
-                messages.success(request, f"Student added with {count} face images. Student needs to complete registration to activate.")
+            os.makedirs(save_dir, exist_ok=True)
+
+            # Save raw uploaded files to a temp staging folder (fast — no face detection yet)
+            temp_raw_dir = os.path.join(save_dir, '_raw_temp')
+            os.makedirs(temp_raw_dir, exist_ok=True)
+            raw_paths = []
+            for i, img in enumerate(images):
+                ext = os.path.splitext(img.name)[1] or '.jpg'
+                raw_path = os.path.join(temp_raw_dir, f"raw_{i:03d}{ext}")
+                with open(raw_path, 'wb') as f:
+                    for chunk in img.chunks():
+                        f.write(chunk)
+                raw_paths.append(raw_path)
+
+            # Background worker: detect faces, crop, then train model
+            def process_and_train(raw_paths, save_dir, folder_name, student_id):
+                try:
+                    count = 0
+                    for raw_path in raw_paths:
+                        try:
+                            if detect_and_crop_face(raw_path, save_dir, folder_name):
+                                count += 1
+                        except Exception as e:
+                            print(f"Face crop error for {raw_path}: {e}")
+                        finally:
+                            try:
+                                os.remove(raw_path)
+                            except Exception:
+                                pass
+
+                    # Clean up temp dir
+                    try:
+                        import shutil
+                        shutil.rmtree(os.path.join(save_dir, '_raw_temp'), ignore_errors=True)
+                    except Exception:
+                        pass
+
+                    # Update student registration status
+                    if count >= 5:
+                        from .models import Student as StudentModel
+                        try:
+                            s = StudentModel.objects.get(id=student_id)
+                            s.is_registered = True
+                            s.save()
+                        except Exception as e:
+                            print(f"Error updating student registration: {e}")
+                        train_model()
+                        print(f"Background: {count} faces processed, model retrained for student {student_id}.")
+                    else:
+                        print(f"Background: only {count} faces found for student {student_id}. Model not retrained.")
+                except Exception as e:
+                    print(f"Background processing error: {e}")
+
+            t = threading.Thread(
+                target=process_and_train,
+                args=(raw_paths, save_dir, folder_name, student.id),
+                daemon=True
+            )
+            t.start()
+
+            messages.success(
+                request,
+                f"✅ Student '{name}' added! {len(images)} photo(s) are being processed in the background. "
+                f"The model will retrain automatically once done."
+            )
         else:
-            messages.success(request, "Student account created successfully. The student can now activate their account and register their face.")
-            
+            messages.success(request, f"✅ Student '{name}' account created. The student can register their face from their portal.")
+
+        if 'save_and_add_another' in request.POST:
+            return redirect('add_student')
         return redirect('admin_dashboard')
-        
+
     return render(request, 'add_student.html')
+
 
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)
 def download_attendance(request):
@@ -983,6 +1037,51 @@ def delete_student(request, student_id):
         messages.success(request, f"Student {name} has been deleted successfully.")
         return redirect('manage_students')
     
+    return redirect('manage_students')
+
+@user_passes_test(lambda u: u.is_superuser)
+def bulk_delete_students(request):
+    if request.method == 'POST':
+        student_ids = request.POST.getlist('student_ids')
+        if not student_ids:
+            messages.warning(request, "No students were selected for deletion.")
+            return redirect('manage_students')
+            
+        deleted_count = 0
+        for student_id in student_ids:
+            try:
+                student = get_object_or_404(Student, id=student_id)
+                user = student.user
+                name = student.name
+                
+                # Try deleting folder using the exact structure from add_student
+                try:
+                    folder_name = f"{student.roll_number}_{student.name}"
+                    safe_dept = "".join([c for c in student.department if c.isalnum() or c in (' ', '_', '-')]).strip() if student.department else ""
+                    safe_year = "".join([c for c in str(student.year) if c.isalnum()]).strip() if student.year else ""
+                    safe_section = "".join([c for c in str(student.section) if c.isalnum()]).strip() if student.section else ""
+                    save_dir = os.path.join(settings.DATASET_DIR, safe_dept, safe_year, safe_section, folder_name)
+                    
+                    if os.path.exists(save_dir):
+                        import shutil
+                        shutil.rmtree(save_dir)
+                except Exception as e:
+                    print(f"Error deleting folder for {name}: {e}")
+
+                student.delete()
+                if user:
+                    user.delete()
+                deleted_count += 1
+            except Exception as e:
+                print(f"Error deleting student {student_id}: {e}")
+                
+        messages.success(request, f"Successfully deleted {deleted_count} student(s).")
+        # Retrain model if faces were removed
+        if deleted_count > 0:
+            import threading
+            t = threading.Thread(target=train_model, daemon=True)
+            t.start()
+            
     return redirect('manage_students')
 
 @user_passes_test(lambda u: u.is_superuser)
@@ -1456,32 +1555,43 @@ def assign_teacher_subject(request):
     
     if request.method == 'POST':
         teacher_id = request.POST.get('teacher')
-        subject = request.POST.get('subject')
-        year = request.POST.get('year')
-        section = request.POST.get('section')
-        day = request.POST.get('day')
-        start_time = request.POST.get('start_time')
-        end_time = request.POST.get('end_time')
         
-        # Convert empty strings to None
-        if not start_time: start_time = None
-        if not end_time: end_time = None
+        subjects = request.POST.getlist('subject[]')
+        years = request.POST.getlist('year[]')
+        sections = request.POST.getlist('section[]')
+        days = request.POST.getlist('day[]')
+        start_times = request.POST.getlist('start_time[]')
+        end_times = request.POST.getlist('end_time[]')
         
         try:
             teacher = User.objects.get(id=teacher_id)
-            TeacherSubject.objects.create(
-                teacher=teacher,
-                subject=subject,
-                year=year,
-                section=section,
-                day=day,
-                start_time=start_time,
-                end_time=end_time
-            )
-            messages.success(request, f"Assigned {subject} to {teacher.username} successfully.")
+            count = 0
+            
+            for subject, year, section, day, start_time, end_time in zip(subjects, years, sections, days, start_times, end_times):
+                if not subject or not year:
+                    continue # Skip empty rows
+                
+                # Convert empty strings to None
+                start_time_val = start_time if start_time else None
+                end_time_val = end_time if end_time else None
+                
+                TeacherSubject.objects.create(
+                    teacher=teacher,
+                    subject=subject.strip(),
+                    year=year.strip(),
+                    section=section.strip() if section else None,
+                    day=day,
+                    start_time=start_time_val,
+                    end_time=end_time_val
+                )
+                count += 1
+                
+            messages.success(request, f"Assigned {count} lecture(s) to {teacher.username} successfully.")
+            if 'save_and_add_another' in request.POST:
+                return redirect('assign_teacher_subject')
             return redirect('manage_teacher_subjects')
         except Exception as e:
-            messages.error(request, f"Error assigning subject: {e}")
+            messages.error(request, f"Error assigning subjects: {e}")
             
     days = TeacherSubject.DAYS_OF_WEEK
     return render(request, 'assign_teacher_subject.html', {'teachers': teachers, 'days': days})
@@ -2180,12 +2290,43 @@ def student_materials(request):
             m.submission = submissions.get(m.id)
             m.late_request = late_requests.get(m.id)
 
+    # Personal notes
+    student_notes = StudentNote.objects.filter(student=student)
+
     return render(request, 'student_portal/student_materials.html', {
         'materials': materials,
         'selected_type': material_type,
+        'student_notes': student_notes,
     })
 
-
+@login_required
+def add_student_note(request):
+    if request.method == 'POST':
+        if not hasattr(request.user, 'student'):
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+        
+        student = request.user.student
+        title = request.POST.get('title')
+        note_type = request.POST.get('note_type')
+        
+        if not title or not note_type:
+            return JsonResponse({'error': 'Title and type are required'}, status=400)
+            
+        note = StudentNote(student=student, title=title, note_type=note_type)
+        
+        if note_type in ['youtube_link', 'web_link']:
+            url = request.POST.get('url')
+            if not url:
+                return JsonResponse({'error': 'URL is required for links'}, status=400)
+            note.url = url
+        elif note_type in ['pdf', 'doc']:
+            if 'file' not in request.FILES:
+                return JsonResponse({'error': 'File is required'}, status=400)
+            note.file = request.FILES['file']
+            
+        note.save()
+        return JsonResponse({'success': True, 'note_id': note.id, 'title': note.title, 'note_type': note.note_type})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 # ── Store Head: assign requests to staff ─────────────────────────────
 @login_required
 def store_head_dashboard(request):
@@ -2660,6 +2801,16 @@ def resolve_late_request(request, request_id):
     return redirect('view_submissions', material_id=assignment.id)
 
 
+def depts_match(dept1, dept2):
+    """Return True if two department strings represent the same department.
+    Handles mismatches like 'CS' vs 'CSE' via two-way case-insensitive substring check."""
+    d1 = (dept1 or '').strip().upper()
+    d2 = (dept2 or '').strip().upper()
+    if not d1 or not d2:
+        return False
+    return d1 == d2 or d1 in d2 or d2 in d1
+
+
 @login_required
 def student_applications(request):
     try:
@@ -2684,12 +2835,18 @@ def student_applications(request):
             ).first()
             
             if not coordinator:
-                dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
-                if student.section and student.section.upper() in dept_codes:
-                    coordinator = ClassCoordinator.objects.filter(
-                        year=student.year,
-                        section=student.section
-                    ).first()
+                # Fallback: match by year + section + fuzzy department
+                for coord in ClassCoordinator.objects.filter(year=student.year, section=student.section):
+                    if depts_match(coord.department, student.department):
+                        coordinator = coord
+                        break
+
+            if not coordinator:
+                # Last resort: match only by year + fuzzy department (ignore section)
+                for coord in ClassCoordinator.objects.filter(year=student.year):
+                    if depts_match(coord.department, student.department):
+                        coordinator = coord
+                        break
 
             StudentApplication.objects.create(
                 student=student,
@@ -2697,7 +2854,7 @@ def student_applications(request):
                 description=description,
                 attachment=attachment
             )
-            
+
             if coordinator:
                 messages.success(request, f"Application '{title}' submitted successfully to coordinator {coordinator.teacher.get_full_name() or coordinator.teacher.username}.")
             else:
@@ -2713,12 +2870,16 @@ def student_applications(request):
     ).first()
     
     if not coordinator:
-        dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
-        if student.section and student.section.upper() in dept_codes:
-            coordinator = ClassCoordinator.objects.filter(
-                year=student.year,
-                section=student.section
-            ).first()
+        for coord in ClassCoordinator.objects.filter(year=student.year, section=student.section):
+            if depts_match(coord.department, student.department):
+                coordinator = coord
+                break
+
+    if not coordinator:
+        for coord in ClassCoordinator.objects.filter(year=student.year):
+            if depts_match(coord.department, student.department):
+                coordinator = coord
+                break
 
     return render(request, 'student_portal/applications.html', {
         'student': student,
@@ -2745,16 +2906,16 @@ def coordinator_dashboard(request):
     else:
         current_coord = coordinators.first()
 
-    students = Student.objects.filter(
-        year=current_coord.year,
-        section=current_coord.section
-    )
-    dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
-    if current_coord.section and current_coord.section.upper() in dept_codes:
-        students = students.filter(department__icontains=current_coord.section)
-    else:
-        students = students.filter(department__icontains=current_coord.department)
-    students = students.order_by('roll_number')
+    # First try: exact year + section + fuzzy department match
+    students_qs = Student.objects.filter(year=current_coord.year, section=current_coord.section)
+    students_list = [s.id for s in students_qs if depts_match(current_coord.department, s.department)]
+
+    # Fallback: if no students found with section filter, try year + fuzzy department only
+    if not students_list:
+        students_qs_fallback = Student.objects.filter(year=current_coord.year)
+        students_list = [s.id for s in students_qs_fallback if depts_match(current_coord.department, s.department)]
+
+    students = Student.objects.filter(id__in=students_list).order_by('roll_number')
 
     applications = StudentApplication.objects.filter(student__in=students)
     pending_applications_count = applications.filter(status='Pending').count()
@@ -2809,18 +2970,15 @@ def coordinator_resolve_application(request, app_id):
     # Find if the logged-in teacher is the coordinator for this student
     coordinators = ClassCoordinator.objects.filter(teacher=request.user)
     is_coordinator = False
-    dept_codes = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'AIDS', 'AIML']
-    
+
     for coord in coordinators:
-        if coord.year == student.year and coord.section == student.section:
-            if coord.section and coord.section.upper() in dept_codes:
-                if coord.section.upper() in student.department.upper():
-                    is_coordinator = True
-                    break
-            else:
-                if coord.department.upper() in student.department.upper():
-                    is_coordinator = True
-                    break
+        year_matches = (coord.year == student.year)
+        dept_ok = depts_match(coord.department, student.department)
+        # Match if year + department match (section can differ due to naming inconsistencies)
+        section_matches = (coord.section == student.section) or dept_ok
+        if year_matches and dept_ok and section_matches:
+            is_coordinator = True
+            break
 
     if not is_coordinator:
         messages.error(request, 'Access denied. You are not the coordinator for this student.')

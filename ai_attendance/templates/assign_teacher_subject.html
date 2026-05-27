@@ -22,50 +22,130 @@
                         </select>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="subject" class="form-label">Subject Name</label>
-                            <input type="text" class="form-control" id="subject" name="subject"
-                                placeholder="e.g. Mathematics" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="day" class="form-label">Day</label>
-                            <select class="form-select" id="day" name="day">
-                                {% for day_val, day_name in days %}
-                                <option value="{{ day_val }}">{{ day_name }}</option>
-                                {% endfor %}
-                            </select>
+                    <div id="subject-rows-container">
+                        <!-- First Subject Row -->
+                        <div class="subject-row card bg-light border-0 mb-4 p-3 position-relative">
+                            <h5 class="fw-bold mb-3 text-primary"><i class="fas fa-chalkboard me-2"></i>Subject Details</h5>
+                            <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-3 remove-row-btn" style="display: none;">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Subject Name</label>
+                                    <input type="text" class="form-control" name="subject[]" placeholder="e.g. Mathematics" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Day</label>
+                                    <select class="form-select" name="day[]">
+                                        {% for day_val, day_name in days %}
+                                        <option value="{{ day_val }}">{{ day_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Year</label>
+                                    <input type="text" class="form-control" name="year[]" placeholder="e.g. 1" required>
+                                    <div class="form-text">Target student year (e.g. 1, 2, 3, 4)</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Section (Optional)</label>
+                                    <input type="text" class="form-control" name="section[]" placeholder="e.g. A">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Start Time</label>
+                                    <input type="time" class="form-control" name="start_time[]">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">End Time</label>
+                                    <input type="time" class="form-control" name="end_time[]">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="year" class="form-label">Year</label>
-                            <input type="text" class="form-control" id="year" name="year" placeholder="e.g. 1" required>
-                            <div class="form-text">Target student year (e.g. 1, 2, 3, 4)</div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="section" class="form-label">Section (Optional)</label>
-                            <input type="text" class="form-control" id="section" name="section" placeholder="e.g. A">
-                        </div>
+                    <div class="text-end mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="add-more-btn">
+                            <i class="fas fa-plus me-1"></i> Add Another Lecture
+                        </button>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="start_time" class="form-label">Start Time</label>
-                            <input type="time" class="form-control" id="start_time" name="start_time">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="end_time" class="form-label">End Time</label>
-                            <input type="time" class="form-control" id="end_time" name="end_time">
-                        </div>
+                    <div class="d-flex gap-3 justify-content-between flex-wrap mt-4">
+                        <button type="submit" name="save_and_add_another" value="true" class="btn btn-outline-success btn-lg flex-grow-1" onclick="this.form.submittedBtn=this;">
+                            <i class="fas fa-plus me-2"></i>Save & Add Another Teacher
+                        </button>
+                        <button type="submit" name="save" value="true" class="btn btn-success btn-lg flex-grow-1" onclick="this.form.submittedBtn=this;">
+                            <i class="fas fa-check me-2"></i>Save Assignments
+                        </button>
                     </div>
-
-                    <div class="d-grid gap-2 mt-4">
-                        <button type="submit" class="btn btn-success btn-lg">Assign Subject</button>
+                    
+                    <div class="d-grid mt-3">
                         <a href="{% url 'manage_teacher_subjects' %}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const container = document.getElementById('subject-rows-container');
+                        const addMoreBtn = document.getElementById('add-more-btn');
+                        
+                        function updateRemoveButtons() {
+                            const rows = container.querySelectorAll('.subject-row');
+                            rows.forEach((row, index) => {
+                                const removeBtn = row.querySelector('.remove-row-btn');
+                                if(rows.length > 1) {
+                                    removeBtn.style.display = 'block';
+                                } else {
+                                    removeBtn.style.display = 'none';
+                                }
+                            });
+                        }
+
+                        addMoreBtn.addEventListener('click', function() {
+                            const firstRow = container.querySelector('.subject-row');
+                            const newRow = firstRow.cloneNode(true);
+                            
+                            // Clear inputs
+                            newRow.querySelectorAll('input').forEach(input => input.value = '');
+                            // Reset select to first option
+                            newRow.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+                            
+                            // Attach remove event listener
+                            const removeBtn = newRow.querySelector('.remove-row-btn');
+                            removeBtn.addEventListener('click', function() {
+                                newRow.remove();
+                                updateRemoveButtons();
+                            });
+                            
+                            container.appendChild(newRow);
+                            updateRemoveButtons();
+                        });
+                        
+                        // Attach remove event listener to existing row (just in case)
+                        container.querySelectorAll('.remove-row-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                this.closest('.subject-row').remove();
+                                updateRemoveButtons();
+                            });
+                        });
+                    });
+
+                    document.querySelector('form').addEventListener('submit', function (e) {
+                        const btn = this.submittedBtn;
+                        if (btn && btn.name) {
+                            const hidden = document.createElement('input');
+                            hidden.type = 'hidden';
+                            hidden.name = btn.name;
+                            hidden.value = btn.value || 'true';
+                            this.appendChild(hidden);
+                        }
+                    });
+                </script>
             </div>
         </div>
     </div>

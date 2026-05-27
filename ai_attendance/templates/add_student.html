@@ -1,6 +1,17 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
+<!-- Loading overlay shown on form submit -->
+<div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55);
+     z-index:9999; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
+    <div class="spinner-border text-light" style="width:3.5rem;height:3.5rem;" role="status"></div>
+    <div style="color:#fff; font-size:1.1rem; font-weight:500; text-align:center; max-width:320px;">
+        <div id="loadingMsg">Processing face images…</div>
+        <small class="text-white-50 mt-1 d-block">Please wait, do not close this tab.</small>
+    </div>
+</div>
+
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow-lg">
@@ -8,7 +19,7 @@
                 <h4 class="mb-0"><i class="fas fa-user-plus me-2"></i>Add New Student</h4>
             </div>
             <div class="card-body p-4">
-                <form method="post" enctype="multipart/form-data">
+                <form method="post" enctype="multipart/form-data" id="addStudentForm">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="name" class="form-label">Full Name</label>
@@ -36,16 +47,73 @@
                         </div>
                     </div>
                     <div class="mb-4">
-                        <label for="images" class="form-label">Upload Photos (Min 5 recommended, optional)</label>
+                        <label for="images" class="form-label">Upload Photos <span class="text-muted">(Min 5 recommended, optional)</span></label>
                         <input type="file" class="form-control" id="images" name="images" multiple accept="image/*">
-                        <div class="form-text">Upload clear photos of the face from different angles, or leave blank to let the student register their face themselves.</div>
+                        <div class="form-text">Upload clear face photos from different angles, or leave blank to let the student self-register.</div>
+                        <div id="fileCount" class="mt-1 text-primary fw-semibold" style="display:none;"></div>
                     </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">Save Student</button>
+                    <div class="d-flex gap-3 justify-content-between flex-wrap">
+                        <button type="submit" name="save_and_add_another" value="true" class="btn btn-outline-primary btn-lg flex-grow-1" id="submitBtnAddMore" onclick="this.form.submittedBtn=this;">
+                            <i class="fas fa-plus me-2"></i>Save & Add Another
+                        </button>
+                        <button type="submit" name="save" value="true" class="btn btn-primary btn-lg flex-grow-1" id="submitBtn" onclick="this.form.submittedBtn=this;">
+                            <i class="fas fa-save me-2"></i>Save Student
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const form = document.getElementById('addStudentForm');
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingMsg = document.getElementById('loadingMsg');
+    const submitBtn = document.getElementById('submitBtn');
+    const imagesInput = document.getElementById('images');
+    const fileCount = document.getElementById('fileCount');
+
+    // Show selected file count
+    imagesInput.addEventListener('change', function () {
+        const n = this.files.length;
+        if (n > 0) {
+            fileCount.style.display = 'block';
+            fileCount.textContent = `${n} file${n > 1 ? 's' : ''} selected` + (n < 5 ? ' — add more for better accuracy (min 5)' : ' ✓');
+            fileCount.className = 'mt-1 fw-semibold ' + (n < 5 ? 'text-warning' : 'text-success');
+        } else {
+            fileCount.style.display = 'none';
+        }
+    });
+
+    form.addEventListener('submit', function () {
+        // Ensure the clicked button's value is sent even after disabling buttons
+        const btn = form.submittedBtn || submitBtn;
+        if (btn && btn.name) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = btn.name;
+            hidden.value = btn.value || 'true';
+            form.appendChild(hidden);
+        }
+
+        const hasImages = imagesInput.files.length > 0;
+        if (hasImages) {
+            loadingMsg.textContent = `Uploading ${imagesInput.files.length} photo(s)… almost done!`;
+        } else {
+            loadingMsg.textContent = 'Creating student account…';
+        }
+        overlay.style.display = 'flex';
+        
+        // Disable both buttons to prevent double click
+        const allBtns = form.querySelectorAll('button[type="submit"]');
+        allBtns.forEach(b => b.disabled = true);
+        
+        if(btn) {
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
+        }
+    });
+})();
+</script>
 {% endblock %}

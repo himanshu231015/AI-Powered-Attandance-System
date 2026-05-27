@@ -14,17 +14,20 @@
                 <div class="card-body text-center pt-0 px-4 pb-5 position-relative">
                     <div class="profile-avatar-container">
                         {% if student.profile_pic %}
-                            <img src="{{ student.profile_pic.url }}" alt="Profile Picture" class="profile-avatar shadow" style="object-fit: cover;">
+                        <img src="{{ student.profile_pic.url }}" alt="Profile Picture" class="profile-avatar shadow"
+                            style="object-fit: cover;">
                         {% else %}
-                            <div class="profile-avatar shadow">
-                                <i class="fas fa-user-graduate"></i>
-                            </div>
+                        <div class="profile-avatar shadow">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
                         {% endif %}
                         <span class="status-indicator-dot pulsing-green" title="Active Account"></span>
                     </div>
-                    
-                    <h3 class="fw-extrabold mb-1 mt-3" style="font-weight: 800; letter-spacing: -0.5px;">{{ student.name }}</h3>
-                    <div class="badge bg-success-soft text-success px-3 py-1 rounded-pill fw-bold mb-4" style="font-size: 0.75rem;">
+
+                    <h3 class="fw-extrabold mb-1 mt-3" style="font-weight: 800; letter-spacing: -0.5px;">{{ student.name
+                        }}</h3>
+                    <div class="badge bg-success-soft text-success px-3 py-1 rounded-pill fw-bold mb-4"
+                        style="font-size: 0.75rem;">
                         <i class="fas fa-check-circle me-1"></i> Active Student Profile
                     </div>
 
@@ -33,13 +36,15 @@
                             <div class="row g-3">
                                 <div class="col-6">
                                     <div class="p-3 info-subcard text-start">
-                                        <span class="info-label"><i class="fas fa-id-card me-1 text-primary"></i> Roll Number</span>
+                                        <span class="info-label"><i class="fas fa-id-card me-1 text-primary"></i> Roll
+                                            Number</span>
                                         <span class="info-value">{{ student.roll_number }}</span>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="p-3 info-subcard text-start">
-                                        <span class="info-label"><i class="fas fa-university me-1 text-info"></i> Branch / Dept</span>
+                                        <span class="info-label"><i class="fas fa-university me-1 text-info"></i> Branch
+                                            / Dept</span>
                                         <span class="info-value">{{ student.department|default:"Not Assigned" }}</span>
                                     </div>
                                 </div>
@@ -51,18 +56,23 @@
 
             <!-- Holiday Calendar Card -->
             <div class="card premium-card mb-4 calendar-card">
-                <div class="card-header premium-card-header d-flex justify-content-between align-items-center bg-gradient-custom">
-                    <h5 class="mb-0 fw-bold text-white"><i class="fas fa-calendar-alt me-2"></i>Holiday Calendar & Events</h5>
-                    <span class="badge bg-white text-primary rounded-pill px-3 py-1 fw-bold fs-7 shadow-sm dynamic-holiday-badge"></span>
+                <div
+                    class="card-header premium-card-header d-flex justify-content-between align-items-center bg-gradient-custom">
+                    <h5 class="mb-0 fw-bold text-white"><i class="fas fa-calendar-alt me-2"></i>Holiday Calendar &
+                        Events</h5>
+                    <span
+                        class="badge bg-white text-primary rounded-pill px-3 py-1 fw-bold fs-7 shadow-sm dynamic-holiday-badge"></span>
                 </div>
                 <div class="card-body p-4">
                     <div class="row g-4">
                         <!-- Calendar Side -->
                         <div class="col-lg-7">
                             <div class="d-flex justify-content-between align-items-center mb-4">
-                                <button class="btn btn-icon-round" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                                <button class="btn btn-icon-round" onclick="changeMonth(-1)"><i
+                                        class="fas fa-chevron-left"></i></button>
                                 <h4 id="calendar-month-year" class="mb-0 fw-extrabold text-main calendar-title"></h4>
-                                <button class="btn btn-icon-round" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                                <button class="btn btn-icon-round" onclick="changeMonth(1)"><i
+                                        class="fas fa-chevron-right"></i></button>
                             </div>
 
                             <div class="calendar-container">
@@ -80,20 +90,21 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Events / Description Side -->
                         <div class="col-lg-5">
-                            <div class="d-flex flex-column h-100 justify-content-between">
-                                <div class="holiday-panel">
-                                    <h6 class="fw-bold text-uppercase tracking-wider text-muted mb-3 small d-flex align-items-center gap-2">
-                                        <i class="fas fa-list-ul text-primary"></i> Holidays in <span id="panel-month-name" class="text-primary"></span>
-                                    </h6>
-                                    <div id="holiday-list-container" class="holiday-list-container d-flex flex-column gap-2">
+                            <div class="d-flex flex-column h-100" style="gap: 16px;">
+                                <h6 class="fw-bold text-uppercase tracking-wider text-muted mb-0 small d-flex align-items-center gap-2">
+                                    <i class="fas fa-list-ul text-primary"></i> Holidays in <span id="panel-month-name" class="text-primary ms-1"></span>
+                                </h6>
+                                <div class="d-flex flex-column gap-2 flex-grow-1 overflow-auto" style="max-height: 340px; padding-right: 4px; scrollbar-width: thin;">
+                                    <div id="holiday-list-container" class="d-flex flex-column gap-2">
                                         <!-- Dynamic list of holidays for this month -->
                                     </div>
+                                    <div id="myRemindersPanel" class="d-flex flex-column gap-2" style="display:none;"></div>
                                 </div>
-                                <div class="mt-4 p-3 rounded-4 border border-color-custom bg-soft-blue d-flex align-items-start gap-3 shadow-sm-inset">
-                                    <div class="icon-circle bg-primary-soft text-primary mt-1" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <div class="p-3 rounded-4 border border-color-custom bg-soft-blue d-flex align-items-start gap-3" style="flex-shrink: 0;">
+                                    <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(79,70,229,0.08);color:var(--primary-color);">
                                         <i class="fas fa-info-circle" style="font-size: 0.9rem;"></i>
                                     </div>
                                     <div>
@@ -121,15 +132,25 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="p-3 bg-light-custom rounded-4 border border-color-custom h-100">
-                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Email Address</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.email|default:"Not set" }}</span></p>
-                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Phone Number</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.phone_number|default:"Not set" }}</span></p>
-                            <p class="mb-0"><strong class="text-muted small text-uppercase">Department / Branch</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.department|default:"Not set" }}</span></p>
+                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Email
+                                    Address</strong> <span class="d-block fw-bold mt-1 fs-6">{{
+                                    student.email|default:"Not set" }}</span></p>
+                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Phone
+                                    Number</strong> <span class="d-block fw-bold mt-1 fs-6">{{
+                                    student.phone_number|default:"Not set" }}</span></p>
+                            <p class="mb-0"><strong class="text-muted small text-uppercase">Department / Branch</strong>
+                                <span class="d-block fw-bold mt-1 fs-6">{{ student.department|default:"Not set"
+                                    }}</span></p>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="p-3 bg-light-custom rounded-4 border border-color-custom h-100">
-                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Date of Birth</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.date_of_birth|default:"Not set" }}</span></p>
-                            <p class="mb-0"><strong class="text-muted small text-uppercase">Home Address</strong> <span class="d-block fw-bold mt-1 fs-6" style="line-height: 1.5;">{{ student.address|default:"Not set" }}</span></p>
+                            <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Date of
+                                    Birth</strong> <span class="d-block fw-bold mt-1 fs-6">{{
+                                    student.date_of_birth|default:"Not set" }}</span></p>
+                            <p class="mb-0"><strong class="text-muted small text-uppercase">Home Address</strong> <span
+                                    class="d-block fw-bold mt-1 fs-6" style="line-height: 1.5;">{{
+                                    student.address|default:"Not set" }}</span></p>
                         </div>
                     </div>
                 </div>
@@ -143,12 +164,13 @@
                 <div class="col-lg-6 col-md-6 mb-4">
                     <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 55px; height: 55px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm"
+                                style="width: 55px; height: 55px; background: rgba(79, 70, 229, 0.08); color: var(--primary-color);">
                                 <i class="fas fa-check-circle fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Current Attendance</h5>
-                            <h2 class="display-6 fw-extrabold mb-1 text-primary" style="font-weight: 800;">{{ current_attendance_count }}</h2>
+                            <h2 class="display-6 fw-extrabold mb-1 text-primary" style="font-weight: 800;">{{
+                                current_attendance_count }}</h2>
                             <p class="text-muted small mb-0">Classes Attended</p>
                         </div>
                     </div>
@@ -158,12 +180,13 @@
                 <div class="col-lg-6 col-md-6 mb-4">
                     <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 55px; height: 55px; background: rgba(2, 132, 199, 0.08); color: #0284c7;">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm"
+                                style="width: 55px; height: 55px; background: rgba(2, 132, 199, 0.08); color: #0284c7;">
                                 <i class="fas fa-chart-pie fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Overall Percentage</h5>
-                            <h2 class="display-6 fw-extrabold mb-1 text-info" style="font-weight: 800;">{{ overall_percentage }}%</h2>
+                            <h2 class="display-6 fw-extrabold mb-1 text-info" style="font-weight: 800;">{{
+                                overall_percentage }}%</h2>
                             <p class="text-muted small mb-3">Total Classes Held: {{ total_classes }}</p>
                             <div class="progress rounded-pill" style="height: 10px;">
                                 <div class="progress-bar {% if overall_percentage >= 75 %}bg-success{% elif overall_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
@@ -178,15 +201,17 @@
                 <div class="col-lg-6 col-md-6 mb-4">
                     <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 55px; height: 55px; background: rgba(245, 158, 11, 0.08); color: #f59e0b;">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm"
+                                style="width: 55px; height: 55px; background: rgba(245, 158, 11, 0.08); color: #f59e0b;">
                                 <i class="fas fa-hourglass-half fs-4"></i>
                             </div>
-                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Week Projection</h5>
-                            <h2 class="display-6 fw-extrabold mb-2 text-warning" style="font-weight: 800;">{{ prediction_week }}%</h2>
+                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Week Projection
+                            </h5>
+                            <h2 class="display-6 fw-extrabold mb-2 text-warning" style="font-weight: 800;">{{
+                                prediction_week }}%</h2>
                             <div class="progress rounded-pill" style="height: 8px;">
-                                <div class="progress-bar bg-warning" role="progressbar"
-                                    style="width: 0%;" data-width="{{ prediction_week }}"></div>
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: 0%;"
+                                    data-width="{{ prediction_week }}"></div>
                             </div>
                         </div>
                     </div>
@@ -196,15 +221,17 @@
                 <div class="col-lg-6 col-md-6 mb-4">
                     <div class="card premium-card h-100">
                         <div class="card-body text-center p-4">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm" 
-                                 style="width: 55px; height: 55px; background: rgba(111, 66, 193, 0.08); color: #6f42c1;">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 shadow-sm"
+                                style="width: 55px; height: 55px; background: rgba(111, 66, 193, 0.08); color: #6f42c1;">
                                 <i class="fas fa-calendar-alt fs-4"></i>
                             </div>
-                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Month Projection</h5>
-                            <h2 class="display-6 fw-extrabold mb-2 text-custom-purple" style="color: #6f42c1 !important; font-weight: 800;">{{ prediction_month }}%</h2>
+                            <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Month Projection
+                            </h5>
+                            <h2 class="display-6 fw-extrabold mb-2 text-custom-purple"
+                                style="color: #6f42c1 !important; font-weight: 800;">{{ prediction_month }}%</h2>
                             <div class="progress rounded-pill" style="height: 8px;">
-                                <div class="progress-bar bg-custom-purple" role="progressbar"
-                                    style="width: 0%;" data-width="{{ prediction_month }}"></div>
+                                <div class="progress-bar bg-custom-purple" role="progressbar" style="width: 0%;"
+                                    data-width="{{ prediction_month }}"></div>
                             </div>
                         </div>
                     </div>
@@ -215,7 +242,8 @@
         <!-- Section: Attendance Projection Graph -->
         <div class="card premium-card mb-4" id="attendance-graph-section" style="display: none;">
             <div class="card-header premium-card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>Attendance Projection Graph</h5>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>Attendance Projection Graph
+                </h5>
             </div>
             <div class="card-body p-4">
                 <canvas id="attendanceChart" style="max-height: 400px;"></canvas>
@@ -231,15 +259,19 @@
                 <div class="row g-4">
                     {% for sub in subject_attendance %}
                     <div class="col-md-6">
-                        <div class="p-3 rounded-4 border border-color-custom bg-light-custom h-100 d-flex flex-column justify-content-between">
+                        <div
+                            class="p-3 rounded-4 border border-color-custom bg-light-custom h-100 d-flex flex-column justify-content-between">
                             <div class="d-flex justify-content-between mb-3 align-items-start">
                                 <span class="fw-bold fs-6" style="color: var(--text-main);">{{ sub.subject }}</span>
-                                <span class="badge bg-primary-soft text-primary rounded px-2 py-1 small fw-bold" style="font-size: 0.72rem;">{{ sub.present }}/{{ sub.total }} Classes</span>
+                                <span class="badge bg-primary-soft text-primary rounded px-2 py-1 small fw-bold"
+                                    style="font-size: 0.72rem;">{{ sub.present }}/{{ sub.total }} Classes</span>
                             </div>
                             <div>
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="small text-muted fw-bold">Attendance Rate</span>
-                                    <span class="small fw-extrabold {% if sub.percentage >= 75 %}text-success{% elif sub.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ sub.percentage }}%</span>
+                                    <span
+                                        class="small fw-extrabold {% if sub.percentage >= 75 %}text-success{% elif sub.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">{{
+                                        sub.percentage }}%</span>
                                 </div>
                                 <div class="progress rounded-pill" style="height: 12px;">
                                     <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
@@ -292,7 +324,8 @@
                                 <td class="fw-bold">{{ record.subject|default:"-" }}</td>
                                 <td class="pe-4 text-center">
                                     <span
-                                        class="badge rounded-pill px-3 py-1 {% if record.status == 'Absent' %}bg-danger{% else %}bg-success{% endif %} text-uppercase shadow-sm" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                        class="badge rounded-pill px-3 py-1 {% if record.status == 'Absent' %}bg-danger{% else %}bg-success{% endif %} text-uppercase shadow-sm"
+                                        style="font-size: 0.72rem; letter-spacing: 0.5px;">
                                         {{ record.status }}
                                     </span>
                                 </td>
@@ -494,11 +527,11 @@
                     const panelMonthName = document.getElementById('panel-month-name');
                     const holidayListContainer = document.getElementById('holiday-list-container');
                     const dynamicBadge = document.querySelector('.dynamic-holiday-badge');
-                    
+
                     if (!calendarDays || !monthYear) return;
-                    
+
                     calendarDays.innerHTML = '';
-                    
+
                     // Add fade transition trigger
                     calendarDays.classList.remove('fade-in-up-anim');
                     void calendarDays.offsetWidth; // Trigger reflow
@@ -525,12 +558,12 @@
 
                     const today = new Date();
                     const currentMonthHolidays = holidayData[month] || [];
-                    
+
                     // Generate calendar day grids
                     for (let i = 1; i <= daysInMonth; i++) {
                         const dayDiv = document.createElement('div');
                         dayDiv.className = 'calendar-day-node';
-                        
+
                         const dateSpan = document.createElement('span');
                         dateSpan.className = 'date-number';
                         dateSpan.innerText = i;
@@ -548,7 +581,7 @@
                             dayDiv.classList.remove('holiday'); // override weekend if any
                             dayDiv.classList.add('gazetted-holiday');
                             dayDiv.setAttribute('title', customHoliday.name);
-                            
+
                             // Add a visual dot
                             const dot = document.createElement('span');
                             dot.className = 'holiday-dot';
@@ -559,6 +592,23 @@
                             dayDiv.classList.add('today');
                         }
 
+                        // --- Reminder dot ---
+                        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                        const reminders = JSON.parse(localStorage.getItem('calendarReminders') || '{}');
+                        if (reminders[dateKey] && reminders[dateKey].length > 0) {
+                            const reminderDot = document.createElement('span');
+                            reminderDot.className = 'reminder-dot';
+                            dayDiv.appendChild(reminderDot);
+                        }
+
+                        // Make day clickable to add reminder
+                        dayDiv.style.cursor = 'pointer';
+                        (function(capturedYear, capturedMonth, capturedDay) {
+                            dayDiv.addEventListener('click', function () {
+                                openReminderModal(capturedYear, capturedMonth, capturedDay);
+                            });
+                        })(year, month, i);
+
                         calendarDays.appendChild(dayDiv);
                     }
 
@@ -566,7 +616,7 @@
                     if (holidayListContainer) {
                         holidayListContainer.innerHTML = '';
                         let holidayCount = 0;
-                        
+
                         // Custom Holidays first
                         currentMonthHolidays.forEach(h => {
                             holidayCount++;
@@ -592,12 +642,12 @@
                                 weekends.push(i);
                             }
                         }
-                        
+
                         if (weekends.length > 0) {
                             holidayCount += weekends.length;
                             const weekendItem = document.createElement('div');
                             weekendItem.className = 'holiday-item weekend';
-                            
+
                             // Format weekends nicely (e.g. "May 3, 4, 10, 11...")
                             const weekendStr = weekends.map(d => `${d}`).join(', ');
                             weekendItem.innerHTML = `
@@ -626,15 +676,50 @@
                         if (dynamicBadge) {
                             dynamicBadge.innerText = `${currentMonthHolidays.length} Gazetted Holidays`;
                         }
-                    }
-                }
 
-                window.changeMonth = function(step) {
+                        // --- Render My Reminders for this month in panel ---
+                        const reminderPanel = document.getElementById('myRemindersPanel');
+                        if (reminderPanel) {
+                            const allReminders = JSON.parse(localStorage.getItem('calendarReminders') || '{}');
+                            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+                            const monthReminders = Object.entries(allReminders)
+                                .filter(([k]) => k.startsWith(monthStr))
+                                .flatMap(([k, rs]) => rs.map(r => ({ dateKey: k, day: parseInt(k.split('-')[2]), ...r })))
+                                .sort((a, b) => a.day - b.day || a.time.localeCompare(b.time));
+
+                            if (monthReminders.length > 0) {
+                                reminderPanel.innerHTML = `
+                                    <div class="fw-bold small text-muted text-uppercase mb-2 mt-3 pt-2" style="border-top:1px solid var(--border-color);">
+                                        <i class="fas fa-bell me-1 text-primary"></i> My Reminders
+                                    </div>
+                                    ${monthReminders.map(r => `
+                                    <div class="holiday-item d-flex justify-content-between align-items-center" style="border-left: 4px solid #4f46e5 !important;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="day-badge" style="background:rgba(79,70,229,0.12); color:#4f46e5;">${r.day}</div>
+                                            <div>
+                                                <span class="fw-bold d-block" style="font-size:0.85rem;">${r.title}</span>
+                                                <span class="text-muted" style="font-size:0.73rem;"><i class="fas fa-clock me-1"></i>${r.time}</span>
+                                            </div>
+                                        </div>
+                                        <span class="badge rounded-pill px-2" style="background:rgba(79,70,229,0.12); color:#4f46e5; font-size:0.65rem;">REMINDER</span>
+                                    </div>`).join('')}
+                                `;
+                                reminderPanel.style.display = 'block';
+                            } else {
+                                reminderPanel.innerHTML = '';
+                                reminderPanel.style.display = 'none';
+                            }
+                        }
+                    }
+                } // end renderCalendar
+
+                window.changeMonth = function (step) {
                     currentDate.setMonth(currentDate.getMonth() + step);
                     renderCalendar();
                 }
 
                 renderCalendar();
+                window.renderCalendar = renderCalendar; // expose globally for reminder system
             });
 
             function previewDashboardImage(input) {
@@ -644,7 +729,7 @@
                         var imgContainer = input.closest('.modal-body');
                         var imgEl = imgContainer.querySelector('img');
                         var iconEl = imgContainer.querySelector('.rounded-circle');
-                        
+
                         if (imgEl) {
                             imgEl.src = e.target.result;
                         } else if (iconEl) {
@@ -663,16 +748,199 @@
             }
         </script>
 
+        <!-- ============ REMINDER SYSTEM ============ -->
+        <script>
+            // --- Reminder Modal Logic ---
+            function openReminderModal(year, month, day) {
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                document.getElementById('reminderDateLabel').innerText = `${day} ${monthNames[month]} ${year}`;
+                document.getElementById('reminderDateKey').value = dateKey;
+                document.getElementById('reminderTitle').value = '';
+                document.getElementById('reminderTime').value = '';
+
+                // Load existing reminders for this day
+                renderExistingReminders(dateKey);
+
+                const modal = new bootstrap.Modal(document.getElementById('reminderModal'));
+                modal.show();
+            }
+
+            function renderExistingReminders(dateKey) {
+                const list = document.getElementById('existingRemindersList');
+                const reminders = JSON.parse(localStorage.getItem('calendarReminders') || '{}');
+                const dayReminders = reminders[dateKey] || [];
+
+                if (dayReminders.length === 0) {
+                    list.innerHTML = '<div class="text-muted small text-center py-2">No reminders set for this day yet.</div>';
+                    return;
+                }
+                list.innerHTML = dayReminders.map((r, idx) => `
+                <div class="d-flex justify-content-between align-items-center p-2 rounded-3 mb-1" style="background:rgba(79,70,229,0.06);">
+                    <div>
+                        <div class="fw-bold small">${r.title}</div>
+                        <div class="text-muted" style="font-size:0.75rem;"><i class="fas fa-clock me-1"></i>${r.time}</div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger border-0 rounded-circle" style="width:28px;height:28px;padding:0;" onclick="deleteReminder('${dateKey}', ${idx})"><i class="fas fa-times" style="font-size:0.7rem;"></i></button>
+                </div>
+            `).join('');
+            }
+
+            function saveReminder() {
+                const dateKey = document.getElementById('reminderDateKey').value;
+                const title = document.getElementById('reminderTitle').value.trim();
+                const time = document.getElementById('reminderTime').value;
+
+                if (!title || !time) {
+                    alert('Please fill in both the reminder title and time.');
+                    return;
+                }
+
+                const reminders = JSON.parse(localStorage.getItem('calendarReminders') || '{}');
+                if (!reminders[dateKey]) reminders[dateKey] = [];
+                reminders[dateKey].push({ title, time, notifiedMain: false, notified30: false });
+                localStorage.setItem('calendarReminders', JSON.stringify(reminders));
+
+                renderExistingReminders(dateKey);
+                document.getElementById('reminderTitle').value = '';
+                document.getElementById('reminderTime').value = '';
+
+                // Re-render calendar to show dot
+                renderCalendar();
+
+                // Request notification permission
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            }
+
+            function deleteReminder(dateKey, idx) {
+                const reminders = JSON.parse(localStorage.getItem('calendarReminders') || '{}');
+                if (reminders[dateKey]) {
+                    reminders[dateKey].splice(idx, 1);
+                    if (reminders[dateKey].length === 0) delete reminders[dateKey];
+                    localStorage.setItem('calendarReminders', JSON.stringify(reminders));
+                }
+                renderExistingReminders(dateKey);
+                renderCalendar();
+            }
+
+            // --- Notification Checker (runs every minute) ---
+            function checkReminders() {
+                if (Notification.permission !== 'granted') return;
+
+                const now = new Date();
+                const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                const reminders = JSON.parse(localStorage.getItem('calendarReminders') || '{}');
+                let changed = false;
+
+                Object.keys(reminders).forEach(dateKey => {
+                    reminders[dateKey].forEach((r, idx) => {
+                        // Calculate 30-min-before time
+                        const [rHour, rMin] = r.time.split(':').map(Number);
+                        const reminderDate = new Date(dateKey + 'T' + r.time);
+                        const before30Date = new Date(reminderDate.getTime() - 30 * 60 * 1000);
+                        const before30Key = before30Date.toISOString().slice(0, 10);
+                        const before30Time = `${String(before30Date.getHours()).padStart(2, '0')}:${String(before30Date.getMinutes()).padStart(2, '0')}`;
+
+                        // 30-min-before notification
+                        if (!r.notified30 && todayKey === before30Key && currentTime === before30Time) {
+                            new Notification(`⏰ Reminder in 30 min: ${r.title}`, {
+                                body: `Scheduled for ${r.time} on ${dateKey}`,
+                                icon: '/static/favicon.ico'
+                            });
+                            reminders[dateKey][idx].notified30 = true;
+                            changed = true;
+                        }
+
+                        // Exact time notification
+                        if (!r.notifiedMain && todayKey === dateKey && currentTime === r.time) {
+                            new Notification(`🔔 Reminder: ${r.title}`, {
+                                body: `This was scheduled for right now (${r.time})`,
+                                icon: '/static/favicon.ico'
+                            });
+                            reminders[dateKey][idx].notifiedMain = true;
+                            changed = true;
+                        }
+                    });
+                });
+
+                if (changed) localStorage.setItem('calendarReminders', JSON.stringify(reminders));
+            }
+
+            // Request permission on load and start checker
+            document.addEventListener('DOMContentLoaded', function () {
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+                setInterval(checkReminders, 60000); // check every minute
+                checkReminders(); // check immediately on load
+            });
+        </script>
+
     </div> <!-- End Main Content Col -->
 </div> <!-- End Row -->
+
+<!-- Reminder Modal -->
+<div class="modal fade" id="reminderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header text-white border-0 rounded-top-4"
+                style="background: linear-gradient(135deg, #4f46e5, #6366f1);">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0"><i class="fas fa-bell me-2"></i>Set Reminder</h5>
+                    <div class="small opacity-75 mt-1" id="reminderDateLabel"></div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="reminderDateKey">
+
+                <!-- Existing reminders -->
+                <div class="mb-3">
+                    <div class="fw-bold small text-muted text-uppercase mb-2"><i class="fas fa-list-check me-1"></i>
+                        Reminders for this day</div>
+                    <div id="existingRemindersList"></div>
+                </div>
+
+                <hr>
+
+                <!-- Add new reminder -->
+                <div class="fw-bold small text-muted text-uppercase mb-3"><i class="fas fa-plus me-1"></i> Add New
+                    Reminder</div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Reminder Title</label>
+                    <input type="text" id="reminderTitle" class="form-control rounded-3"
+                        placeholder="e.g. Submit assignment, Study for exam...">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-bold">Time</label>
+                    <input type="time" id="reminderTime" class="form-control rounded-3">
+                    <div class="text-muted mt-1" style="font-size:0.73rem;"><i class="fas fa-info-circle me-1"></i>You
+                        will get a notification 30 min before &amp; exactly at this time.</div>
+                </div>
+                <button class="btn btn-primary w-100 rounded-3 fw-bold" onclick="saveReminder()">
+                    <i class="fas fa-bell me-2"></i>Save Reminder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Edit Profile Modal -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: var(--shadow-lg);">
-            <div class="modal-header bg-primary text-white py-3" style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;">
+        <div class="modal-content"
+            style="border-radius: 20px; border: none; overflow: hidden; box-shadow: var(--shadow-lg);">
+            <div class="modal-header bg-primary text-white py-3"
+                style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;">
                 <h5 class="modal-title fw-bold">Edit Profile Details</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
             </div>
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
@@ -680,44 +948,57 @@
                     <!-- Profile Picture Upload -->
                     <div class="mb-3 text-center">
                         {% if student.profile_pic %}
-                            <img src="{{ student.profile_pic.url }}" alt="Profile Picture" class="rounded-circle shadow border border-2 border-primary mb-2" style="width: 80px; height: 80px; object-fit: cover;">
+                        <img src="{{ student.profile_pic.url }}" alt="Profile Picture"
+                            class="rounded-circle shadow border border-2 border-primary mb-2"
+                            style="width: 80px; height: 80px; object-fit: cover;">
                         {% else %}
-                            <div class="rounded-circle shadow border border-2 border-primary d-inline-flex align-items-center justify-content-center bg-primary-soft text-primary mb-2" style="width: 80px; height: 80px; font-size: 2.2rem; background-color: rgba(79, 70, 229, 0.08);">
-                                <i class="fas fa-user-graduate"></i>
-                            </div>
+                        <div class="rounded-circle shadow border border-2 border-primary d-inline-flex align-items-center justify-content-center bg-primary-soft text-primary mb-2"
+                            style="width: 80px; height: 80px; font-size: 2.2rem; background-color: rgba(79, 70, 229, 0.08);">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
                         {% endif %}
                         <div>
-                            <label for="dashboard_profile_pic" class="btn btn-xs btn-outline-primary rounded-pill px-3" style="font-size: 0.75rem; font-weight: 600; cursor: pointer;">
+                            <label for="dashboard_profile_pic" class="btn btn-xs btn-outline-primary rounded-pill px-3"
+                                style="font-size: 0.75rem; font-weight: 600; cursor: pointer;">
                                 <i class="fas fa-camera me-1"></i> Change Photo
                             </label>
-                            <input type="file" id="dashboard_profile_pic" name="profile_pic" accept="image/*" style="display: none;" onchange="previewDashboardImage(this)">
+                            <input type="file" id="dashboard_profile_pic" name="profile_pic" accept="image/*"
+                                style="display: none;" onchange="previewDashboardImage(this)">
                         </div>
                     </div>
 
                     <div class="mb-3 text-start">
                         <label class="form-label small fw-bold text-muted">Email Address</label>
-                        <input type="email" class="form-control rounded-3" name="email" value="{{ student.email|default:'' }}">
+                        <input type="email" class="form-control rounded-3" name="email"
+                            value="{{ student.email|default:'' }}">
                     </div>
                     <div class="mb-3 text-start">
                         <label class="form-label small fw-bold text-muted">Phone Number</label>
-                        <input type="text" class="form-control rounded-3" name="phone_number" value="{{ student.phone_number|default:'' }}">
+                        <input type="text" class="form-control rounded-3" name="phone_number"
+                            value="{{ student.phone_number|default:'' }}">
                     </div>
                     <div class="mb-3 text-start">
                         <label class="form-label small fw-bold text-muted">Department</label>
-                        <input type="text" class="form-control rounded-3" name="department" value="{{ student.department|default:'' }}">
+                        <input type="text" class="form-control rounded-3" name="department"
+                            value="{{ student.department|default:'' }}">
                     </div>
                     <div class="mb-3 text-start">
                         <label class="form-label small fw-bold text-muted">Date of Birth</label>
-                        <input type="date" class="form-control rounded-3" name="date_of_birth" value="{{ student.date_of_birth|date:'Y-m-d' }}">
+                        <input type="date" class="form-control rounded-3" name="date_of_birth"
+                            value="{{ student.date_of_birth|date:'Y-m-d' }}">
                     </div>
                     <div class="mb-3 text-start">
                         <label class="form-label small fw-bold text-muted">Home Address</label>
-                        <textarea class="form-control rounded-3" name="address" rows="3">{{ student.address|default:'' }}</textarea>
+                        <textarea class="form-control rounded-3" name="address"
+                            rows="3">{{ student.address|default:'' }}</textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-3 bg-light-custom">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4" style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%); border: none;">Save Changes</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
+                        data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4"
+                        style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%); border: none;">Save
+                        Changes</button>
                 </div>
             </form>
         </div>
@@ -734,23 +1015,28 @@
         overflow: hidden;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    
+
     .premium-card-header {
         padding: 20px 24px !important;
     }
-    
+
     /* Horizontal Taskbar Styles */
     .horizontal-taskbar {
         background-color: var(--bg-card);
     }
+
     .taskbar-nav {
         overflow-x: auto;
         white-space: nowrap;
-        scrollbar-width: none; /* Hide scrollbar for Firefox */
+        scrollbar-width: none;
+        /* Hide scrollbar for Firefox */
     }
+
     .taskbar-nav::-webkit-scrollbar {
-        display: none; /* Hide scrollbar for Chrome/Safari/Webkit */
+        display: none;
+        /* Hide scrollbar for Chrome/Safari/Webkit */
     }
+
     .taskbar-btn {
         display: inline-flex;
         align-items: center;
@@ -764,29 +1050,34 @@
         background-color: transparent;
         border: 1px solid transparent;
     }
+
     .taskbar-btn i {
         font-size: 1rem;
         transition: transform 0.2s ease;
     }
+
     .taskbar-btn:hover {
         color: var(--primary-color);
         background-color: rgba(79, 70, 229, 0.04);
         border-color: rgba(79, 70, 229, 0.05);
     }
+
     body.dark-mode .taskbar-btn:hover {
         color: #818cf8;
         background-color: rgba(129, 140, 248, 0.06);
     }
+
     .taskbar-btn:hover i {
         transform: scale(1.15);
     }
+
     .taskbar-btn.active {
         color: #ffffff !important;
         background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;
         box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
         border-color: transparent;
     }
-    
+
     /* Hero Profile layout */
     .profile-banner {
         height: 120px;
@@ -794,7 +1085,7 @@
         opacity: 0.95;
         position: relative;
     }
-    
+
     .profile-banner::after {
         content: '';
         position: absolute;
@@ -805,13 +1096,13 @@
         top: -40px;
         right: -30px;
     }
-    
+
     .profile-avatar-container {
         position: relative;
         display: inline-block;
         margin-top: -55px;
     }
-    
+
     .profile-avatar {
         width: 105px;
         height: 105px;
@@ -824,13 +1115,13 @@
         color: #4F46E5;
         font-size: 2.5rem;
     }
-    
+
     body.dark-mode .profile-avatar {
         color: #818cf8;
         background: #1e1e2d;
         border-color: #1e1e2d;
     }
-    
+
     .status-indicator-dot {
         position: absolute;
         bottom: 4px;
@@ -840,36 +1131,38 @@
         border-radius: 50%;
         border: 2.5px solid var(--bg-card);
     }
-    
+
     .pulsing-green {
         background-color: #10b981;
         box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
         animation: pulse 1.6s infinite;
     }
-    
+
     @keyframes pulse {
         0% {
             transform: scale(0.95);
             box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
         }
+
         70% {
             transform: scale(1);
             box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
         }
+
         100% {
             transform: scale(0.95);
             box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
         }
     }
-    
+
     .bg-success-soft {
         background-color: rgba(16, 185, 129, 0.08) !important;
     }
-    
+
     .bg-primary-soft {
         background-color: rgba(79, 70, 229, 0.08) !important;
     }
-    
+
     .info-subcard {
         background-color: rgba(79, 70, 229, 0.02);
         border: 1px solid var(--border-color);
@@ -879,20 +1172,21 @@
         gap: 4px;
         transition: all 0.2s ease;
     }
-    
+
     .info-subcard:hover {
         transform: translateY(-2px);
         background-color: rgba(79, 70, 229, 0.04);
         border-color: rgba(79, 70, 229, 0.15);
     }
-    
+
     body.dark-mode .info-subcard {
         background-color: rgba(255, 255, 255, 0.01);
     }
+
     body.dark-mode .info-subcard:hover {
         background-color: rgba(255, 255, 255, 0.025);
     }
-    
+
     .info-label {
         font-weight: 700;
         color: var(--text-muted);
@@ -900,7 +1194,7 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-    
+
     .info-value {
         font-weight: 800;
         color: var(--text-main);
@@ -911,9 +1205,11 @@
     .bg-light-custom {
         background-color: rgba(79, 70, 229, 0.02);
     }
+
     body.dark-mode .bg-light-custom {
         background-color: rgba(255, 255, 255, 0.01);
     }
+
     .border-color-custom {
         border-color: var(--border-color) !important;
     }
@@ -925,7 +1221,7 @@
         border: 1px solid var(--border-color) !important;
         overflow: hidden;
     }
-    
+
     .bg-gradient-custom {
         background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
         border: none !important;
@@ -1063,7 +1359,7 @@
         background-color: rgba(244, 63, 94, 0.03);
         color: #f43f5e;
     }
-    
+
     body.dark-mode .calendar-day-node.holiday {
         background-color: rgba(244, 63, 94, 0.06);
         color: #fb7185;
@@ -1151,7 +1447,7 @@
     .bg-soft-blue {
         background-color: rgba(79, 70, 229, 0.02);
     }
-    
+
     /* Animation definition */
     .fade-in-up-anim {
         animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -1162,9 +1458,36 @@
             opacity: 0;
             transform: translateY(15px);
         }
+
         100% {
             opacity: 1;
             transform: translateY(0);
+        }
+    }
+
+    /* Reminder dot on calendar days */
+    .reminder-dot {
+        width: 7px;
+        height: 7px;
+        background: linear-gradient(135deg, #4f46e5, #818cf8);
+        border-radius: 50%;
+        margin-top: 3px;
+        box-shadow: 0 0 6px rgba(79, 70, 229, 0.6);
+        display: block;
+        animation: pulse-blue 2s infinite;
+    }
+
+    @keyframes pulse-blue {
+        0% {
+            box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.5);
+        }
+
+        70% {
+            box-shadow: 0 0 0 5px rgba(79, 70, 229, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
         }
     }
 

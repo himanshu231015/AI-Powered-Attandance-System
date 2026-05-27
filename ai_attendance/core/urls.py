@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, rag_agent
 
 urlpatterns = [
     path('login/', views.login_view, name='login'),
@@ -25,6 +25,7 @@ urlpatterns = [
     path('download_attendance/', views.download_attendance, name='download_attendance'),
     path('edit_student/<int:student_id>/', views.edit_student, name='edit_student'),
     path('delete_student/<int:student_id>/', views.delete_student, name='delete_student'),
+    path('bulk_delete_students/', views.bulk_delete_students, name='bulk_delete_students'),
     path('manage_teachers/', views.manage_teachers, name='manage_teachers'),
     path('edit_teacher/<int:teacher_id>/', views.edit_teacher, name='edit_teacher'),
     path('delete_teacher/<int:teacher_id>/', views.delete_teacher, name='delete_teacher'),
@@ -50,6 +51,9 @@ urlpatterns = [
     path('teacher_materials/submissions/<int:material_id>/', views.view_submissions, name='view_submissions'),
     path('teacher_materials/grade/<int:submission_id>/', views.grade_submission, name='grade_submission'),
     path('teacher_materials/resolve_late/<int:request_id>/', views.resolve_late_request, name='resolve_late_request'),
+    # AI Notes Agent
+    path('student_materials/ask_ai/', rag_agent.ask_ai_api, name='ask_ai_notes'),
+    path('student_materials/add_note/', views.add_student_note, name='add_student_note'),
     # Store Management (Admin)
     path('store_dashboard/', views.admin_store_dashboard, name='admin_store_dashboard'),
     path('store_staff/add/', views.add_store_staff, name='add_store_staff'),

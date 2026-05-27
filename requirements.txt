@@ -4,3 +4,6 @@ face_recognition
 numpy
 scikit-learn
 pillow
+google-generativeai
+PyPDF2
+python-docx
