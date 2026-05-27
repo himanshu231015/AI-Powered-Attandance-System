@@ -4,6 +4,7 @@ import json
 import PyPDF2
 import docx
 import urllib.parse
+genai = None
 try:
     import google.generativeai as genai
     HAS_GENAI = True
@@ -99,8 +100,9 @@ def extract_youtube_transcript(url):
         if not video_id:
             return "Could not parse YouTube Video ID."
             
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        text = " ".join([t['text'] for t in transcript])
+        yt_api = YouTubeTranscriptApi()
+        transcript = yt_api.fetch(video_id)
+        text = " ".join([t.text for t in transcript])
         return text
     except Exception as e:
         print(f"Error fetching YT transcript for {url}: {e}")

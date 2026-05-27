@@ -290,11 +290,11 @@ class StoreRequest(models.Model):
 
     @property
     def total_items(self):
-        return self.items.count()
+        return self.items.count()  # pyrefly: ignore
 
     @property
     def fulfilled_items_count(self):
-        return sum(1 for item in self.items.all() if item.is_fulfilled)
+        return sum(1 for item in self.items.all() if item.is_fulfilled)  # pyrefly: ignore
 
     @property
     def fulfillment_pct(self):

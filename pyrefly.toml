@@ -2,3 +2,17 @@
 # Points Pyrefly to the Anaconda Python environment where Django is installed
 
 python_interpreter = "C:/Users/himan/anaconda3/python.exe"
+
+ignore-missing-imports = [
+    "requests.*",
+    "bs4.*",
+    "openpyxl.*",
+    "PyPDF2.*",
+    "docx.*",
+    "cv2.*",
+    "numpy.*",
+    "face_recognition.*",
+    "sklearn.*",
+    "youtube_transcript_api.*",
+    "google.generativeai.*"
+]

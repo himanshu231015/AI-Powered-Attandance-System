@@ -24,8 +24,7 @@
                         <span class="status-indicator-dot pulsing-green" title="Active Account"></span>
                     </div>
 
-                    <h3 class="fw-extrabold mb-1 mt-3" style="font-weight: 800; letter-spacing: -0.5px;">{{ student.name
-                        }}</h3>
+                    <h3 class="fw-extrabold mb-1 mt-3" style="font-weight: 800; letter-spacing: -0.5px;">{{ student.name }}</h3>
                     <div class="badge bg-success-soft text-success px-3 py-1 rounded-pill fw-bold mb-4"
                         style="font-size: 0.75rem;">
                         <i class="fas fa-check-circle me-1"></i> Active Student Profile
@@ -133,24 +132,19 @@
                     <div class="col-md-6">
                         <div class="p-3 bg-light-custom rounded-4 border border-color-custom h-100">
                             <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Email
-                                    Address</strong> <span class="d-block fw-bold mt-1 fs-6">{{
-                                    student.email|default:"Not set" }}</span></p>
+                                    Address</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.email|default:"Not set" }}</span></p>
                             <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Phone
-                                    Number</strong> <span class="d-block fw-bold mt-1 fs-6">{{
-                                    student.phone_number|default:"Not set" }}</span></p>
+                                    Number</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.phone_number|default:"Not set" }}</span></p>
                             <p class="mb-0"><strong class="text-muted small text-uppercase">Department / Branch</strong>
-                                <span class="d-block fw-bold mt-1 fs-6">{{ student.department|default:"Not set"
-                                    }}</span></p>
+                                <span class="d-block fw-bold mt-1 fs-6">{{ student.department|default:"Not set" }}</span></p>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="p-3 bg-light-custom rounded-4 border border-color-custom h-100">
                             <p class="mb-3 border-bottom pb-2"><strong class="text-muted small text-uppercase">Date of
-                                    Birth</strong> <span class="d-block fw-bold mt-1 fs-6">{{
-                                    student.date_of_birth|default:"Not set" }}</span></p>
+                                    Birth</strong> <span class="d-block fw-bold mt-1 fs-6">{{ student.date_of_birth|default:"Not set" }}</span></p>
                             <p class="mb-0"><strong class="text-muted small text-uppercase">Home Address</strong> <span
-                                    class="d-block fw-bold mt-1 fs-6" style="line-height: 1.5;">{{
-                                    student.address|default:"Not set" }}</span></p>
+                                    class="d-block fw-bold mt-1 fs-6" style="line-height: 1.5;">{{ student.address|default:"Not set" }}</span></p>
                         </div>
                     </div>
                 </div>
@@ -169,8 +163,7 @@
                                 <i class="fas fa-check-circle fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Current Attendance</h5>
-                            <h2 class="display-6 fw-extrabold mb-1 text-primary" style="font-weight: 800;">{{
-                                current_attendance_count }}</h2>
+                            <h2 class="display-6 fw-extrabold mb-1 text-primary" style="font-weight: 800;">{{ current_attendance_count }}</h2>
                             <p class="text-muted small mb-0">Classes Attended</p>
                         </div>
                     </div>
@@ -185,8 +178,7 @@
                                 <i class="fas fa-chart-pie fs-4"></i>
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Overall Percentage</h5>
-                            <h2 class="display-6 fw-extrabold mb-1 text-info" style="font-weight: 800;">{{
-                                overall_percentage }}%</h2>
+                            <h2 class="display-6 fw-extrabold mb-1 text-info" style="font-weight: 800;">{{ overall_percentage }}%</h2>
                             <p class="text-muted small mb-3">Total Classes Held: {{ total_classes }}</p>
                             <div class="progress rounded-pill" style="height: 10px;">
                                 <div class="progress-bar {% if overall_percentage >= 75 %}bg-success{% elif overall_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
@@ -207,8 +199,7 @@
                             </div>
                             <h5 class="card-title text-muted small fw-bold text-uppercase mb-1">Next Week Projection
                             </h5>
-                            <h2 class="display-6 fw-extrabold mb-2 text-warning" style="font-weight: 800;">{{
-                                prediction_week }}%</h2>
+                            <h2 class="display-6 fw-extrabold mb-2 text-warning" style="font-weight: 800;">{{ prediction_week }}%</h2>
                             <div class="progress rounded-pill" style="height: 8px;">
                                 <div class="progress-bar bg-warning" role="progressbar" style="width: 0%;"
                                     data-width="{{ prediction_week }}"></div>
@@ -270,8 +261,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="small text-muted fw-bold">Attendance Rate</span>
                                     <span
-                                        class="small fw-extrabold {% if sub.percentage >= 75 %}text-success{% elif sub.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">{{
-                                        sub.percentage }}%</span>
+                                        class="small fw-extrabold {% if sub.percentage >= 75 %}text-success{% elif sub.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ sub.percentage }}%</span>
                                 </div>
                                 <div class="progress rounded-pill" style="height: 12px;">
                                     <div class="progress-bar {% if sub.percentage >= 75 %}bg-success{% elif sub.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"

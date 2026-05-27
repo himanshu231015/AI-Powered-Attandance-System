@@ -16,8 +16,7 @@
                         <select class="form-select" id="teacher" name="teacher" required>
                             <option value="">Select a Teacher...</option>
                             {% for teacher in teachers %}
-                            <option value="{{ teacher.id }}">{{ teacher.get_full_name|default:teacher.username }} ({{
-                                teacher.email }})</option>
+                            <option value="{{ teacher.id }}">{{ teacher.get_full_name|default:teacher.username }} ({{ teacher.email }})</option>
                             {% endfor %}
                         </select>
                     </div>

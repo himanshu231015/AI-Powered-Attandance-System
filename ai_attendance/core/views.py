@@ -22,6 +22,12 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 import threading
 
+def is_admin(u):
+    return getattr(u, 'is_superuser', False)
+
+def is_admin_or_staff(u):
+    return getattr(u, 'is_superuser', False) or getattr(u, 'is_staff', False)
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('index')
@@ -31,11 +37,11 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            if user.is_superuser:
+            if getattr(user, 'is_superuser', False):
                 return redirect('admin_dashboard')
             # Store Staff / Store Head redirect
             try:
-                sp = user.store_profile
+                sp = getattr(user, 'store_profile')
                 if sp.role == 'head':
                     return redirect('store_head_dashboard')
                 else:
@@ -43,16 +49,16 @@ def login_view(request):
             except Exception:
                 pass
             # Teacher redirect
-            if user.is_staff:
+            if getattr(user, 'is_staff', False):
                 return redirect('teacher_dashboard')
             # Student redirect
             try:
-                student = user.student
+                student = getattr(user, 'student')
                 if not student.is_registered:
                     logout(request)
                     messages.warning(request, "Your account has not been activated. Please verify details and register your face to activate your account.")
                     return redirect('register')
-            except Student.DoesNotExist:
+            except Exception:
                 pass
             return redirect('student_dashboard')
         else:
@@ -79,7 +85,7 @@ def register_verify(request):
         user = authenticate(request, username=roll_number, password=password)
         if user is not None:
             try:
-                student = user.student
+                student = getattr(user, 'student')
                 if student.is_registered:
                     return JsonResponse({'status': 'error', 'message': 'Account already activated. Please login directly.'})
                 return JsonResponse({
@@ -116,7 +122,7 @@ def register_activate(request):
             return JsonResponse({'status': 'error', 'message': 'Authentication failed.'})
             
         try:
-            student = user.student
+            student = getattr(user, 'student')
             if student.is_registered:
                 return JsonResponse({'status': 'error', 'message': 'Account already activated.'})
         except Student.DoesNotExist:
@@ -179,6 +185,8 @@ def register_activate(request):
             'status': 'ok',
             'message': f'Account activated successfully! {success_count} face photos processed and model trained.'
         })
+
+    return JsonResponse({'status': 'error', 'message': 'GET method not supported.'})
 
 def index(request):
     if request.user.is_authenticated:
@@ -718,7 +726,7 @@ def process_live_frame(request):
             
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def add_teacher(request):
     from .models import TeacherProfile
     dept_choices = TeacherProfile.DEPARTMENT_CHOICES
@@ -782,7 +790,7 @@ def add_teacher(request):
 
     return render(request, 'add_teacher.html', {'dept_choices': dept_choices})
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def add_student(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
@@ -894,7 +902,7 @@ def add_student(request):
     return render(request, 'add_student.html')
 
 
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def download_attendance(request):
     import openpyxl
     from openpyxl.styles import Font
@@ -918,6 +926,7 @@ def download_attendance(request):
     # Create Workbook
     wb = openpyxl.Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Attendance Report"
 
     # Headers
@@ -964,7 +973,7 @@ def download_attendance(request):
     wb.save(response)
     return response
 
-@user_passes_test(lambda u: u.is_superuser or u.is_staff)
+@user_passes_test(is_admin_or_staff)
 def manage_students(request):
     # Get filter parameters
     branch = request.GET.get('branch')
@@ -1004,13 +1013,13 @@ def manage_students(request):
         else:
             percentage = 0
             
-        student.attendance_percentage = percentage
-        student.total_classes = total_classes
-        student.present_count = present_count
+        student.attendance_percentage = percentage  # pyrefly: ignore
+        student.total_classes = total_classes  # pyrefly: ignore
+        student.present_count = present_count  # pyrefly: ignore
         
     return render(request, 'manage_students.html', {'students': students})
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def delete_student(request, student_id):
     if request.method == 'POST':
         student = get_object_or_404(Student, id=student_id)
@@ -1039,7 +1048,7 @@ def delete_student(request, student_id):
     
     return redirect('manage_students')
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def bulk_delete_students(request):
     if request.method == 'POST':
         student_ids = request.POST.getlist('student_ids')
@@ -1084,7 +1093,7 @@ def bulk_delete_students(request):
             
     return redirect('manage_students')
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def edit_student(request, student_id):
     student = get_object_or_404(Student, id=student_id)
     
@@ -1127,7 +1136,7 @@ def edit_student(request, student_id):
         
     return render(request, 'edit_student.html', {'student': student})
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def manage_teachers(request):
     from .models import TeacherProfile
     dept_choices = TeacherProfile.DEPARTMENT_CHOICES
@@ -1149,7 +1158,7 @@ def manage_teachers(request):
     dept_label_map = dict(dept_choices)
     grouped = OrderedDict()
     for t in teachers_qs:
-        dept_key = t.teacher_profile.department
+        dept_key = getattr(t, 'teacher_profile').department
         dept_label = dept_label_map.get(dept_key, dept_key)
         grouped.setdefault(dept_label, []).append(t)
 
@@ -1160,7 +1169,7 @@ def manage_teachers(request):
         'selected_dept': selected_dept,
     })
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def edit_teacher(request, teacher_id):
     from .models import TeacherProfile
     teacher = get_object_or_404(User, id=teacher_id, is_staff=True, is_superuser=False)
@@ -1231,7 +1240,7 @@ def edit_teacher(request, teacher_id):
         'coordinator':  coordinator,
     })
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def delete_teacher(request, teacher_id):
     if request.method == 'POST':
         teacher = get_object_or_404(User, id=teacher_id, is_staff=True, is_superuser=False)
@@ -1240,7 +1249,7 @@ def delete_teacher(request, teacher_id):
         messages.success(request, f"Teacher '{name}' deleted successfully.")
     return redirect('manage_teachers')
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def admin_dashboard(request):
     total_students = Student.objects.count()
     total_teachers = User.objects.filter(is_staff=True, is_superuser=False).count()
@@ -1270,7 +1279,7 @@ def admin_dashboard(request):
     return render(request, 'admin_dashboard.html', context)
 
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def review_assessment_request(request, request_id):
     """Admin: Approve or Reject a teacher assessment request."""
     req = get_object_or_404(AssessmentRequest, id=request_id)
@@ -1520,18 +1529,18 @@ def teacher_dashboard(request):
     current_time = datetime.datetime.now().time()
     display_classes = []
     for cls in assigned_classes:
-        cls.is_active = False
+        cls.is_active = False  # pyrefly: ignore
         if cls.start_time and cls.end_time:
             # Check if current time is within class hours
             if cls.start_time <= cls.end_time:
                 # Normal case: start <= now <= end
                 if cls.start_time <= current_time <= cls.end_time:
-                    cls.is_active = True
+                    cls.is_active = True  # pyrefly: ignore
             else:
                 # Midnight crossover: start > end (e.g. 23:00 to 01:00)
                 # Active if now >= start (23:30) OR now <= end (00:30)
                 if current_time >= cls.start_time or current_time <= cls.end_time:
-                    cls.is_active = True
+                    cls.is_active = True  # pyrefly: ignore
         display_classes.append(cls)
 
     return render(request, 'teacher_dashboard.html', {
@@ -1544,12 +1553,12 @@ def teacher_dashboard(request):
         'user': request.user
     })
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def manage_teacher_subjects(request):
     subjects = TeacherSubject.objects.all().order_by('teacher__username', 'day')
     return render(request, 'manage_teacher_subjects.html', {'subjects': subjects})
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def assign_teacher_subject(request):
     teachers = User.objects.filter(is_staff=True, is_superuser=False)
     
@@ -1596,7 +1605,7 @@ def assign_teacher_subject(request):
     days = TeacherSubject.DAYS_OF_WEEK
     return render(request, 'assign_teacher_subject.html', {'teachers': teachers, 'days': days})
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def edit_teacher_subject(request, subject_id):
     subject_obj = get_object_or_404(TeacherSubject, id=subject_id)
     teachers = User.objects.filter(is_staff=True, is_superuser=False)
@@ -1639,7 +1648,7 @@ def edit_teacher_subject(request, subject_id):
         'days': days
     })
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def delete_teacher_subject(request, subject_id):
     if request.method == 'POST':
         try:
@@ -1756,7 +1765,7 @@ def cancel_accessory_request(request, request_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def review_accessory_request(request, request_id):
     """Admin: Approve or reject an accessory request."""
     req = get_object_or_404(AccessoryRequest, id=request_id)
@@ -1854,7 +1863,7 @@ def mark_notification_read(request, notif_id):
 #  STORE MANAGEMENT VIEWS
 # ═══════════════════════════════════════════════
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def admin_store_dashboard(request):
     """Admin: Full store management — staff + all requests with item details."""
     store_staff   = StoreStaff.objects.select_related('user').order_by('role', 'user__username')
@@ -1885,7 +1894,7 @@ def admin_store_dashboard(request):
     return render(request, 'store_dashboard.html', context)
 
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def add_store_staff(request):
     """Admin: Add a user as Store Head or Store Staff."""
     if request.method == 'POST':
@@ -1920,7 +1929,7 @@ def add_store_staff(request):
     return redirect('admin_store_dashboard')
 
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def delete_store_staff(request, staff_id):
     """Admin: Remove a user from store staff."""
     if request.method == 'POST':
@@ -1931,7 +1940,7 @@ def delete_store_staff(request, staff_id):
     return redirect('admin_store_dashboard')
 
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def edit_store_staff(request, staff_id):
     """Admin: Edit store staff details."""
     staff = get_object_or_404(StoreStaff, id=staff_id)
@@ -1959,7 +1968,7 @@ def edit_store_staff(request, staff_id):
     return render(request, 'edit_store_staff.html', {'staff': staff})
 
 
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(is_admin)
 def update_store_request(request, request_id):
     """Admin: Update item fulfilment quantities + overall status."""
     store_req = get_object_or_404(StoreRequest, id=request_id)
@@ -1967,7 +1976,7 @@ def update_store_request(request, request_id):
         old_status = store_req.status
 
         # Update each item's quantity_provided
-        for item in store_req.items.all():
+        for item in store_req.items.all():  # pyrefly: ignore
             key     = f'qty_provided_{item.id}'
             new_qty = request.POST.get(key)
             if new_qty is not None:
@@ -1983,7 +1992,7 @@ def update_store_request(request, request_id):
         fulfilled_by_id = request.POST.get('fulfilled_by', '').strip()
 
         # Auto-compute status from items
-        items = list(store_req.items.all())
+        items = list(store_req.items.all())  # pyrefly: ignore
         if items:
             if all(i.is_fulfilled for i in items):
                 store_req.status = 'fulfilled'
@@ -2017,7 +2026,7 @@ def update_store_request(request, request_id):
 
         # Notify HOD if request came from a teacher with a dept
         try:
-            dept = teacher_user.teacher_profile.department
+            dept = getattr(teacher_user, 'teacher_profile').department
             hod_user = _get_dept_hod_user(dept)
             if hod_user and hod_user != teacher_user:
                 notify_users.append(hod_user)
@@ -2287,8 +2296,8 @@ def student_materials(request):
     late_requests = {r.assignment_id: r for r in LateSubmissionRequest.objects.filter(student=student)}
     for m in materials:
         if m.material_type == 'assignment':
-            m.submission = submissions.get(m.id)
-            m.late_request = late_requests.get(m.id)
+            m.submission = submissions.get(m.id)  # pyrefly: ignore
+            m.late_request = late_requests.get(m.id)  # pyrefly: ignore
 
     # Personal notes
     student_notes = StudentNote.objects.filter(student=student)
@@ -2435,7 +2444,7 @@ def store_staff_respond(request, request_id):
         expected_delivery = request.POST.get('expected_delivery', '').strip()
 
         # Update each item's qty_provided
-        for item in store_req.items.all():
+        for item in store_req.items.all():  # pyrefly: ignore
             key     = f'qty_provided_{item.id}'
             new_qty = request.POST.get(key)
             if new_qty is not None:
@@ -2455,7 +2464,7 @@ def store_staff_respond(request, request_id):
         store_req.fulfilled_by   = sp
 
         # Auto-compute status
-        items = list(store_req.items.all())
+        items = list(store_req.items.all())  # pyrefly: ignore
         if items:
             if any(i.quantity_provided > 0 for i in items):
                 store_req.status = 'delivered'
@@ -2476,7 +2485,7 @@ def store_staff_respond(request, request_id):
         notify_list = [store_req.requested_by] + _get_store_head_users()
         # Also notify HOD
         try:
-            dept = store_req.requested_by.teacher_profile.department
+            dept = getattr(store_req.requested_by, 'teacher_profile').department
             hod_user = _get_dept_hod_user(dept)
             if hod_user:
                 notify_list.append(hod_user)
@@ -2496,7 +2505,7 @@ def teacher_confirm_receipt(request, request_id):
         teacher_remarks = request.POST.get('teacher_remarks', '').strip()
         
         # Update each item's qty_received
-        for item in store_req.items.all():
+        for item in store_req.items.all():  # pyrefly: ignore
             key = f'qty_received_{item.id}'
             new_qty = request.POST.get(key)
             if new_qty is not None:
@@ -2510,7 +2519,7 @@ def teacher_confirm_receipt(request, request_id):
         store_req.teacher_confirmed_at = timezone.now()
         
         # Auto-compute status
-        items = list(store_req.items.all())
+        items = list(store_req.items.all())  # pyrefly: ignore
         if items:
             if all(i.quantity_received >= i.quantity_requested for i in items):
                 store_req.status = 'fulfilled'
@@ -2905,6 +2914,7 @@ def coordinator_dashboard(request):
         current_coord = get_object_or_404(ClassCoordinator, id=coord_id, teacher=request.user)
     else:
         current_coord = coordinators.first()
+    assert current_coord is not None
 
     # First try: exact year + section + fuzzy department match
     students_qs = Student.objects.filter(year=current_coord.year, section=current_coord.section)
@@ -3033,6 +3043,7 @@ def export_coordinator_attendance_excel(request, coord_id):
 
     wb = openpyxl.Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Attendance Sheet"
     ws.views.sheetView[0].showGridLines = True
 
@@ -3047,7 +3058,7 @@ def export_coordinator_attendance_excel(request, coord_id):
 
     # 1. Title Row (Row 1)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
-    title_cell = ws['A1']
+    title_cell = ws.cell(row=1, column=1)
     YEAR_ROMAN = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
     try:
         yr_val = int(coordinator.year)
@@ -3065,9 +3076,9 @@ def export_coordinator_attendance_excel(request, coord_id):
         ws.cell(row=1, column=c).border = thin_border
 
     # 2. Date Row (Row 2)
-    ws['B2'] = "Date------>"
-    ws['B2'].font = Font(name="Calibri", size=10, italic=True)
-    ws['B2'].alignment = Alignment(horizontal="right", vertical="center")
+    ws.cell(row=2, column=2).value = "Date------>"
+    ws.cell(row=2, column=2).font = Font(name="Calibri", size=10, italic=True)
+    ws.cell(row=2, column=2).alignment = Alignment(horizontal="right", vertical="center")
     
     current_date = None
     start_col = 4
@@ -3093,9 +3104,9 @@ def export_coordinator_attendance_excel(request, coord_id):
         ws.merge_cells(start_row=2, start_column=start_col, end_row=2, end_column=4 + len(col_pairs) - 1)
 
     # 3. Lecture Row (Row 3)
-    ws['B3'] = "Lecture No ------>"
-    ws['B3'].font = Font(name="Calibri", size=10, italic=True)
-    ws['B3'].alignment = Alignment(horizontal="right", vertical="center")
+    ws.cell(row=3, column=2).value = "Lecture No ------>"
+    ws.cell(row=3, column=2).font = Font(name="Calibri", size=10, italic=True)
+    ws.cell(row=3, column=2).alignment = Alignment(horizontal="right", vertical="center")
     
     lecture_counters = {}
     for idx, (date, subject) in enumerate(col_pairs):
@@ -3107,11 +3118,11 @@ def export_coordinator_attendance_excel(request, coord_id):
         cell.font = Font(name="Calibri", size=10)
 
     # 4. Subject Row (Row 4)
-    ws['B4'] = "SUBJECT"
-    ws['B4'].font = Font(name="Calibri", size=10, bold=True)
-    ws['B4'].alignment = Alignment(horizontal="left", vertical="center")
-    ws['C4'] = "------->"
-    ws['C4'].alignment = Alignment(horizontal="center", vertical="center")
+    ws.cell(row=4, column=2).value = "SUBJECT"
+    ws.cell(row=4, column=2).font = Font(name="Calibri", size=10, bold=True)
+    ws.cell(row=4, column=2).alignment = Alignment(horizontal="left", vertical="center")
+    ws.cell(row=4, column=3).value = "------->"
+    ws.cell(row=4, column=3).alignment = Alignment(horizontal="center", vertical="center")
     
     for idx, (date, subject) in enumerate(col_pairs):
         col_idx = 4 + idx
