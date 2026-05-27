@@ -1,0 +1,75 @@
+name: "Deployment"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Select the environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  get-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout  
+        uses: actions/checkout@v4
+
+      - name: Prepare deployment
+        run: |
+          mkdir -p deployment
+          rsync -av --exclude '.git*' --exclude '.github*' --exclude '.claude*' . deployment/
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-files
+          path: deployment/
+
+  deploy-dev:
+    needs: get-code
+    if: inputs.target_env == 'dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download deployment artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-files
+          path: deployment/
+
+      - name: Deploy to dev 
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "deployment/"
+          destination: "/home/ec2-user/ai-attendance/"
+          strip_components: 1
+
+  deploy-prod:
+    needs: get-code
+    if: inputs.target_env == 'prod'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download deployment artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-files
+          path: deployment/
+
+      - name: Deploy to prod 
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "deployment/"
+          destination: "/home/ec2-user/ai-attendance/"
+          strip_components: 1
