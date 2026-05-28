@@ -34,6 +34,7 @@ jobs:
     needs: get-code
     if: inputs.target_env == 'dev'
     runs-on: ubuntu-latest
+    environment: dev  # <--- FIX 1: Unlocks the 'dev' secrets vault
     steps:
       - name: Download deployment artifact
         uses: actions/download-artifact@v4
@@ -49,13 +50,15 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 22
           source: "deployment/"
-          destination: "/home/ec2-user/ai-attendance/"
+          target: "/home/ec2-user/ai-attendance/"  # <--- FIX 2: Changed 'destination' to 'target'
           strip_components: 1
+
 
   deploy-prod:
     needs: get-code
     if: inputs.target_env == 'prod'
     runs-on: ubuntu-latest
+    environment: prod  # <--- FIX 3: Unlocks the 'prod' secrets vault
     steps:
       - name: Download deployment artifact
         uses: actions/download-artifact@v4
@@ -71,5 +74,5 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 22
           source: "deployment/"
-          destination: "/home/ec2-user/ai-attendance/"
+          target: "/home/ec2-user/ai-attendance/"  # <--- FIX 4: Changed 'destination' to 'target'
           strip_components: 1
