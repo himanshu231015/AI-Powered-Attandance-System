@@ -135,6 +135,71 @@ Pushes in-app alerts to student dashboards.
 
 ---
 
+## 📈 Model Evaluation
+
+The recognition pipeline was benchmarked across **105 face encodings** from **12 registered students** using a 5-fold stratified cross-validation strategy. Evaluation covers three distinct axes: classification performance, biometric verification, and embedding-space quality.
+
+> Run the evaluation yourself: `python evaluate_model.py` (from the project root). Results are saved to `evaluation_output/`.
+
+---
+
+### 1️⃣ Classification Task
+
+| Metric | Value |
+| :--- | :--- |
+| **Accuracy** | **98.10%** |
+| **Precision** (weighted avg) | **99.05%** |
+| **Recall** (weighted avg) | **98.10%** |
+| **F1 Score** (weighted avg) | **98.53%** |
+| **Unknown Rejection Rate** | 1.90% |
+
+
+---
+
+### 2️⃣ Verification Task (Biometric)
+
+The system was evaluated as a **1-vs-1 verification engine** by computing similarity scores across all **5,460 pairwise combinations** (534 genuine + 4,926 impostor pairs).
+
+| Metric | Value | Description |
+| :--- | :--- | :--- |
+| **AUC (ROC)** | **0.9947** | Near-perfect discriminability; 1.0 is ideal |
+| **EER** | **4.31%** | Equal Error Rate — where FAR equals FRR |
+| **FAR** | **0.63%** | False Accept Rate — impostors wrongly accepted |
+| **FRR** | **9.93%** | False Reject Rate — genuine users wrongly rejected |
+
+---
+
+### 3️⃣ Embedding Similarity (128-D Face Vectors)
+
+Analysis of pairwise distances in the 128-dimensional `dlib` face embedding space:
+
+| Metric | Genuine Pairs | Impostor Pairs | Ideal |
+| :--- | :---: | :---: | :---: |
+| **Mean Cosine Similarity** | 0.9599 | 0.8708 | 1.0 / 0.0 |
+| **Mean Euclidean Distance** | 0.3801 | 0.7218 | 0.0 / >0.53 |
+| **RMSE** | 0.4033 | 0.2907 | 0.0 / — |
+
+
+
+### 🔬 Evaluation Script
+
+A standalone evaluation script is included at the project root:
+
+```bash
+# From the project root directory
+python evaluate_model.py
+```
+
+It generates three plots in the `evaluation_output/` folder:
+
+| Output File | Contents |
+| :--- | :--- |
+| `confusion_matrix.png` | 12×12 confusion matrix with color intensity |
+| `roc_far_frr.png` | ROC curve (AUC) + FAR/FRR vs threshold sweep |
+| `embedding_similarity.png` | Euclidean & Cosine distance distributions (genuine vs impostor) |
+
+---
+
 ## 📁 Folder Structure
 
 ```hl

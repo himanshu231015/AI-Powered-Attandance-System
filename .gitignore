@@ -4,3 +4,4 @@ media
 Time table
 .env
 .env*
+__pycache__
