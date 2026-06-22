@@ -2336,6 +2336,20 @@ def add_student_note(request):
         note.save()
         return JsonResponse({'success': True, 'note_id': note.id, 'title': note.title, 'note_type': note.note_type})
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@login_required
+def delete_student_note(request, note_id):
+    if request.method == 'POST':
+        if not hasattr(request.user, 'student'):
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+        try:
+            note = StudentNote.objects.get(id=note_id, student=request.user.student)
+            note.delete()
+            return JsonResponse({'success': True})
+        except StudentNote.DoesNotExist:
+            return JsonResponse({'error': 'Note not found or unauthorized'}, status=404)
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
 # ── Store Head: assign requests to staff ─────────────────────────────
 @login_required
 def store_head_dashboard(request):

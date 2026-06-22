@@ -53,7 +53,9 @@ urlpatterns = [
     path('teacher_materials/resolve_late/<int:request_id>/', views.resolve_late_request, name='resolve_late_request'),
     # AI Notes Agent
     path('student_materials/ask_ai/', rag_agent.ask_ai_api, name='ask_ai_notes'),
+    path('student_materials/clear_ai_history/', rag_agent.clear_ai_history_api, name='clear_ai_history'),
     path('student_materials/add_note/', views.add_student_note, name='add_student_note'),
+    path('student_materials/delete_note/<int:note_id>/', views.delete_student_note, name='delete_student_note'),
     # Store Management (Admin)
     path('store_dashboard/', views.admin_store_dashboard, name='admin_store_dashboard'),
     path('store_staff/add/', views.add_store_staff, name='add_store_staff'),

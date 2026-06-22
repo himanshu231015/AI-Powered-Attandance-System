@@ -46,7 +46,9 @@ SUGGESTED REPOSITORY METADATA:
 
 ## ✨ Features
 
-* **🔐 Role-Based Portals**: Custom workspaces for **Administrators** (rosters, models), **Teachers** (marking, reports), and **Students** (logs, weekly progress metrics).
+* **🔐 Role-Based Portals**: Custom workspaces for **Administrators**, **Teachers**, **Students**, **HODs**, and **Store Staff**.
+* **📦 Store & Inventory Management**: Fully integrated store request workflow for classroom accessories, requiring HOD approval and Store Head assignment.
+* **📚 Academic Management**: End-to-end course material distribution, assignment tracking, late submission requests, and formal assessment requests.
 * **🤖 Dual-Engine Face Detection**: Leverages **HOG (Histogram of Oriented Gradients)** for precision and **Haar Cascades** for speed, merging coordinates using Intersection over Union (IoU > 0.3) to avoid duplicates.
 * **⚡ Incremental AI Training**: Encodes facial features into 128D vectors and caches them (`encodings_cache.pkl`) to bypass recalculations, training a **K-Nearest Neighbors (KNN)** model dynamically.
 * **📅 Timetable Synchronization**: Auto-detects the current lecture block based on the timetable schedule, marking attendance only during valid slots.
@@ -106,6 +108,14 @@ Logs attendance checks.
 ### 5. `Notification`
 Pushes in-app alerts to student dashboards.
 * `recipient` (FK to Student) • `message` • `is_read` • `created_at` • `notification_type`.
+
+### 6. `Store & Inventory Management`
+Handles the procurement and distribution workflow.
+* `StoreStaff` • `StoreRequest` • `StoreRequestItem` • `StoreNotification`
+
+### 7. `Academic & Assessments`
+Handles coursework, assignments, and formal teacher requests.
+* `CourseMaterial` • `StudentSubmission` • `AssessmentRequest` • `AccessoryRequest`
 
 ---
 
