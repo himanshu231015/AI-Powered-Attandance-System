@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-calendar-check me-2"></i>Select Class for Attendance</h4>
+            </div>
+            <div class="card-body p-4">
+                {% if assigned_classes %}
+                <form method="get" action="{% url 'manual_attendance' %}">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Select Class</label>
+                        <select name="subject" class="form-select form-select-lg" required id="classSelect">
+                            <option value="">-- Choose Class --</option>
+                            {% for c in assigned_classes %}
+                            <option value="{{ c.subject }}" data-year="{{ c.year }}" data-section="{{ c.section|default:'' }}">
+                                {{ c.subject }} (Year {{ c.year }}{% if c.section %}, Sec {{ c.section }}{% endif %})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" name="year" id="hiddenYear">
+                        <input type="hidden" name="section" id="hiddenSection">
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Continue to Mark Attendance <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="alert alert-warning">
+                    You have no classes assigned to you.
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('classSelect').addEventListener('change', function() {
+    var selectedOption = this.options[this.selectedIndex];
+    if(selectedOption.value) {
+        document.getElementById('hiddenYear').value = selectedOption.getAttribute('data-year');
+        document.getElementById('hiddenSection').value = selectedOption.getAttribute('data-section');
+    } else {
+        document.getElementById('hiddenYear').value = '';
+        document.getElementById('hiddenSection').value = '';
+    }
+});
+</script>
+{% endblock %}

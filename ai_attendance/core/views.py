@@ -238,6 +238,15 @@ def train(request):
     return redirect('login')
 
 @login_required
+def take_attendance_selector(request):
+    if not request.user.is_staff:
+        messages.error(request, "Access denied.")
+        return redirect('home')
+        
+    assigned_classes = TeacherSubject.objects.filter(teacher=request.user)
+    return render(request, 'take_attendance_selector.html', {'assigned_classes': assigned_classes})
+
+@login_required
 def upload_attendance(request):
     # Get params
     subject = request.GET.get('subject') or request.POST.get('subject')
@@ -1002,11 +1011,20 @@ def manage_students(request):
     # Calculate attendance for each student (common logic)
     for student in students:
         records = AttendanceRecord.objects.filter(student=student)
+        
+        cohort_records = AttendanceRecord.objects.filter(
+            student__department=student.department,
+            student__year=student.year,
+            student__section=student.section
+        )
+
         if assigned_subjects is not None:
             records = records.filter(subject__in=assigned_subjects)
+            cohort_records = cohort_records.filter(subject__in=assigned_subjects)
             
-        total_classes = records.count()
+        total_classes = cohort_records.values('date', 'time', 'subject').distinct().count()
         present_count = records.filter(status='Present').count()
+        absent_count = total_classes - present_count
         
         if total_classes > 0:
             percentage = round((present_count / total_classes) * 100, 1)
@@ -1016,6 +1034,7 @@ def manage_students(request):
         student.attendance_percentage = percentage  # pyrefly: ignore
         student.total_classes = total_classes  # pyrefly: ignore
         student.present_count = present_count  # pyrefly: ignore
+        student.absent_count = absent_count  # pyrefly: ignore
         
     return render(request, 'manage_students.html', {'students': students})
 
